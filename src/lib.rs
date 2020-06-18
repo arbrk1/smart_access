@@ -162,8 +162,8 @@
 //!   making it possible to modify the value referenced more than once
 //! * `impl Cps<View=V>` can be used only once but has [batching](struct.CpsBatch.html). 
 //!   It comes in two flavors: _compile-time batching_ 
-//!   which can't be used across any control flow and  
-//!   _runtime batching_ which can't be used in `no_std` contexts
+//!   which can't be used across any control flow and _runtime batching_ which 
+//!   can't be used in `no_std` contexts
 //!
 //! ### Note
 //!
@@ -187,7 +187,7 @@
 //!
 //! ## Motivation (part II: bidirectional programming)
 //!
-//! We give a simple illustration: a bidirectional vector parser.
+//! We give a simple illustration: a toy example of a bidirectional vector parser.
 //!
 //! Not only can it parse a vector but also can print it back (note 
 //! that two bidirectional parsers can be combined into a bidirectional 
@@ -247,6 +247,8 @@
 //!     fn bi_right(self, a: &mut A) -> B;
 //! }
 //!
+//! // DO NOT USE IN PRODUCTION: efficient parsing is incompatible 
+//! // with using copies of tails of the parsed string
 //! type Parse<T> = (Option<T>, String);
 //!
 //! // a very simplistic blanket implementation
@@ -333,7 +335,6 @@
 //! impl<V, Parser> At<_Many<Parser>> for String where
 //!     String: At<Parser, View=Parse<V>>,
 //!     Parser: Bidirectional<String, Parse<V>> + Clone,
-//!     V: Clone,
 //! {
 //!     type View = Parse<Vec<V>>;
 //!
@@ -377,7 +378,6 @@
 //! impl<V, Parser> At<_Optional<Parser>> for String where
 //!     String: At<Parser, View=Parse<V>>,
 //!     Parser: Bidirectional<String, Parse<V>> + Clone,
-//!     V: Clone,
 //! {
 //!     type View = Parse<Option<V>>;
 //!
@@ -410,8 +410,6 @@
 //!     String: At<P2, View=Parse<V2>>,
 //!     P1: Bidirectional<String, Parse<V1>> + Clone,
 //!     P2: Bidirectional<String, Parse<V2>> + Clone,
-//!     V1: Clone,
-//!     V2: Clone,
 //! {
 //!     type View = Parse<(V1,V2)>;
 //!

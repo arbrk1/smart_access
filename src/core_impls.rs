@@ -1,4 +1,4 @@
-//! Implementation of [`At`](trait.At.html) for core datatypes.
+//! Implementation of [`At`](../trait.At.html) for core datatypes.
 //!
 //! The following traits are implemented:
 //! * `At<usize, View=T> for [T]`: simple indexing

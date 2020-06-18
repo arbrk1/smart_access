@@ -30,6 +30,7 @@ in your `Cargo.toml`.
 
 ## Versions
 
+* `0.1.3`: WIP
 * `0.1.2`: A bit more user-friendly docs.
 * `0.1.1`: Only the README has been updated.
 * `0.1.0`: The first iteration.

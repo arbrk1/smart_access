@@ -6,6 +6,8 @@ use run_batch::RunBatch;
 
 
 /// A smart access protocol.
+///
+/// It is intended to be used through a [`Cps`](trait.Cps.html)-bounded type.
 pub trait At<Index> {
     type View: ?Sized;
 
@@ -29,7 +31,7 @@ pub trait At<Index> {
     /// * a view couldn't be obtained (and thus `f` had not been called)
     /// * `f` had been called but failed to mutate the view in a meaningful way
     ///
-    /// If you need to distinguish these cases you can use some side-effect of `f`.
+    /// If you need to distinguish between these cases you can use some side-effect of `f`.
     fn access_at<R, F>(&mut self, i: Index, f: F) -> Option<R> where 
         F: FnOnce(&mut Self::View) -> R;
 }
