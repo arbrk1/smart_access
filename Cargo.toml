@@ -1,0 +1,22 @@
+[package]
+name = "smart_access"
+version = "0.1.0"
+authors = ["arbrk1 <arbrk1@gmail.com>"]
+edition = "2018"
+description = 'A minimalistic zero-dependency "lazy bidirectional pointer" framework.'
+readme = "README.md"
+repository = "https://github.com/arbrk1/smart_access/"
+license = "MIT"
+keywords = ["data", "framework", "library", "optics", "lens"]
+categories = ["data-structures", "rust-patterns", "no-std"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[features]
+std_collections = []
+batch_rt = []
+batch_ct = []
+default = ["std_collections", "batch_rt", "batch_ct"]
+
