@@ -2,7 +2,7 @@
 
 ## Overview
 
-TO BE WRITTEN
+TO BE WRITTEN (you can look at the crate [documentation](https://docs.rs/smart_access/))
 
 ## Usage
 
