@@ -1,2 +1,15 @@
-# smart_access
-A minimalistic library for Rust providing something which can be loosely described as "lazy bidirectional pointers".
+# Smart accessors for Rust
+
+## Overview
+
+TO BE WRITTEN
+
+## Usage
+
+Simply include 
+
+```
+smart_access = "0.1"
+```
+
+in your `Cargo.toml`.
