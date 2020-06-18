@@ -9,6 +9,11 @@
 //! accessing some data but in a different way: they have trivial drop semantics 
 //! and nontrivial access semantics.
 //!
+//! ### Note
+//!
+//! If you do not want to read a long text, just proceed to the 
+//! [essential part](#feature-flags) of the documentation.
+//!
 //!
 //! ## High level overview
 //!
@@ -552,7 +557,7 @@
 //!
 //! ## Feature flags
 //!
-//! Currently there is only one feature:
+//! Currently there are three features:
 //!
 //! * `std_collections`: Provides accessors for stdlib collections.
 //! * `batch_rt`: Provides runtime [batching](struct.CpsBatch.html).
