@@ -30,6 +30,7 @@ in your `Cargo.toml`.
 
 ## Versions
 
+* `0.2.1`: WIP
 * `0.2.0`: Simplistic batch editing + breaking change for rt-batches + doc improvements.
 * `0.1.2`: A bit more user-friendly docs.
 * `0.1.1`: Only the README has been updated.

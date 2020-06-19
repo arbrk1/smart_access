@@ -140,8 +140,9 @@ pub trait Cps {
 ///
 /// ## Runtime version
 ///
-/// Created by method `.batch_rt()`. Has _mutable_ interface. Can be combined
-/// with loops but every `.add` consumes some memory.
+/// Created by method `.batch_rt()`. Can be combined with loops but every `.add` consumes some memory.
+///
+/// _Almost_ compatible with compile-time version but with some quirks.
 ///
 /// ### Example
 ///
