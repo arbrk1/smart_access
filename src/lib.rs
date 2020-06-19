@@ -12,7 +12,7 @@
 //! ### Note
 //!
 //! If you do not want to read a long text, just proceed to the 
-//! [essential part](#feature-flags) of the documentation.
+//! [essential part](#cargo-features) of the documentation.
 //!
 //!
 //! ## High level overview
@@ -566,19 +566,19 @@
 //! can house any lens, prism or affine traversal.
 //!
 //!
-//! ## Feature flags
+//! ## Cargo features
 //!
 //! Currently there are following features:
 //!
-//! * `std`: Link to std
+//! * `std`: Links to std.
 //! * `std_collections`: Provides accessors for stdlib collections.
 //! * `batch_rt`: Provides runtime [batching](struct.CpsBatch.html).
 //! * `batch_ct`: Provides compile-time [batching](struct.CpsBatch.html). 
 //!   Compatible with `no_std`.
+//! * `detach`: Makes [`AT`-paths](struct.AT.html) detachable. 
+//!   Compatible with `no_std`.
 //!
 //! All features are enabled by default.
-//!
-//! In a `no_std` environment `std_collections` and `batch_rt` must be disabled.
 
 #![cfg_attr(not(feature="std"), no_std)]
 

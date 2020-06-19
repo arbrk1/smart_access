@@ -75,3 +75,27 @@ fn test_optional() {
     assert!(bar.at(()).replace(2) == None);
     assert!(bar == Err(1));
 }
+
+
+#[cfg(feature="detach")]
+#[test]
+fn test_detach() {
+    let mut foo = Some(Some(Some(0)));
+    let mut bar = Some(Some(Some(0)));
+
+    let detached = foo.at(()).at(()).at(()).detach();
+    let the_same_path = detached.clone();
+
+    bar.attach(the_same_path).replace(1);
+    assert!(foo == Some(Some(Some(0))));
+    assert!(bar == Some(Some(Some(1))));
+
+    foo.attach(detached).replace(2);
+    assert!(foo == Some(Some(Some(2))));
+    assert!(bar == Some(Some(Some(1))));
+
+    let path = bar.at(()).at(()).detach().at(());
+    bar.attach(path).replace(3);
+    assert!(bar == Some(Some(Some(3))));
+}
+

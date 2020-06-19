@@ -4,8 +4,18 @@ mod run_batch;  // a helper for compile-time batch execution
 #[cfg(any(feature="batch_rt", feature="batch_ct"))]
 use run_batch::RunBatch;
 
-use core::marker::PhantomData;
+#[cfg(feature="detach")]
+mod detach; // detached paths
 
+#[cfg(feature="detach")]
+use detach::{ AttachedRoot, Attach, Detach };
+
+#[cfg(not(feature="detach"))]
+type AttachedRoot<T> = T;
+
+#[cfg(not(feature="detach"))]
+#[allow(non_snake_case)]
+fn AttachedRoot<T>(t: T) -> T { t }
 
 
 /// A smart access protocol.
@@ -82,16 +92,24 @@ pub trait Cps {
 
     /// &#8220;Moves in the direction&#8221; of the provided index.
     ///
-    /// It seems to be impossible to override `at` in a meaningful way.
-    fn at<Index>(self, i: Index) -> AT<Self, Index> where
+    /// __Not intended for overriding.__
+    ///
+    /// _If you see scary `AttachedRoot<Self>` as a part of the return type 
+    /// then you have enabled the `detach` feature. Without `detach` that part 
+    /// is simply `Self`._
+    fn at<Index>(self, i: Index) -> AT<AttachedRoot<Self>, Index> where
         Self: Sized,
         Self::View: At<Index>
     {
-        AT { prev: self, index: i }
+        AT { prev: AttachedRoot(self), index: i } 
     }
 
     #[cfg(feature="batch_ct")]
     /// Constructs a [compile-time batch](struct.CpsBatch.html).
+    ///
+    /// __Not intended for overriding.__
+    ///
+    /// _Present only on `batch_ct`._
     fn batch_ct(self) -> CpsBatch<Self, ()> where
         Self: Sized,
     {
@@ -100,10 +118,27 @@ pub trait Cps {
 
     #[cfg(feature="batch_rt")]
     /// Constructs a [runtime batch](struct.CpsBatch.html).
+    ///
+    /// __Not intended for overriding.__
+    ///
+    /// _Present only on `batch_rt`._
     fn batch_rt<R>(self) -> CpsBatch<Self, Vec<FnBoxRt<Self::View, R>>> where
         Self: Sized,
     {
         CpsBatch { cps: self, list: Vec::new() }
+    }
+
+    #[cfg(feature="detach")]
+    /// Attaches a [detached](struct.AT.html) path.
+    ///
+    /// __Not intended for overriding.__
+    ///
+    /// _Present only on `detach`._
+    fn attach<Path>(self, path: Path) -> Path::Output where
+        Self: Sized,
+        Path: Attach<Self>
+    {
+        path.attach(self)
     }
 }
 
@@ -216,7 +251,7 @@ impl<CPS> CpsBatch<CPS, ()> where
 #[cfg(feature="batch_ct")]
 impl<CPS,Prev,F,R> CpsBatch<CPS, (Prev, F)> where
     CPS: Cps,
-    (Prev,F): RunBatch<CPS::View, Result=R>,
+    (Prev,F): RunBatch<CPS::View, Output=R>,
 {
     /// Runs a _nonempty_ compile-time batch.
     pub fn run(self) -> Option<R> {
@@ -388,17 +423,79 @@ fn test_rt_batch_editing() {
 /// Though `AT` is exposed, it's strongly recommended to use
 /// [`impl Cps<View=T>`](trait.Cps.html) as a return type of your functions 
 /// and [`Cps<View=T>`](trait.Cps.html) bounds on their parameters.
+///
+/// Enabling `detach` feature allows one to detach `AT`s from their roots. 
+/// 
+/// ### Note
+///
+/// If you pass a detached path to a function then you have to use 
+/// `AT<P,I>` instead of a `Cps`-bounded parameter as an argument type.
 #[must_use]
+#[cfg_attr(feature="detach", derive(Clone))]
+#[derive(Debug)]
 pub struct AT<T, Index> { 
     prev: T, 
     index: Index,
 }
 
 
+/// Detaches the path.
+///
+/// _Present only on `detach`._
+///
+/// ### Usage example
+///
+/// ```
+/// use smart_access::Cps;
+///
+/// let mut foo = vec![vec![vec![0]]];
+/// let mut bar = vec![vec![vec![0]]];
+///
+/// let detached = foo.at(0).at(0).at(0).detach();
+///
+/// // Detached paths are cloneable (if indices are cloneable)
+/// let the_same_path = detached.clone();
+///
+/// bar.attach(the_same_path).replace(1);
+/// assert!(foo == vec![vec![vec![0]]]);
+/// assert!(bar == vec![vec![vec![1]]]);
+///
+/// foo.attach(detached).replace(2);
+/// assert!(foo == vec![vec![vec![2]]]);
+/// assert!(bar == vec![vec![vec![1]]]);
+/// 
+/// let path = bar.at(0).at(0).detach().at(0);
+/// bar.attach(path).replace(3);
+/// assert!(bar == vec![vec![vec![3]]]);
+/// ```
+#[cfg(feature="detach")]
+impl<T, I, Detached> AT<T, I> where
+    AT<T, I>: Detach<Output=Detached>
+{
+    pub fn detach(self) -> Detached {
+        <Self as Detach>::detach(self)
+    }
+}
+
+/// A helper `at` method overriding the `Cps` default.
+///
+/// _Present only on `detach`._
+#[cfg(feature="detach")]
+impl<T,I> AT<T, I> where
+{
+    pub fn at<Index,V>(self, i: Index) -> AT<Self, Index> where
+        Self: Cps<View=V>,
+        V: At<Index>,
+    {
+        AT { prev: self, index: i } 
+    }
+}
+
+
 /// `access` is guaranteed to return `Some(f(..))`
 impl<T: ?Sized> Cps for &mut T {
     type View = T;
-
+    
     fn access<R, F>(self, f: F) -> Option<R> where
         F: FnOnce(&mut T) -> R
     {
@@ -413,7 +510,7 @@ impl<T, V: ?Sized, Index> Cps for AT<T, Index> where
     V: At<Index>
 {
     type View = V::View;
-
+    
     fn access<R, F>(self, f: F) -> Option<R> where 
         F: FnOnce(&mut Self::View) -> R 
     {
@@ -423,17 +520,4 @@ impl<T, V: ?Sized, Index> Cps for AT<T, Index> where
     }
 }
 
-
-/// A helper for detached paths.
-///
-/// `access` returns `None`.
-impl<V: ?Sized> Cps for PhantomData<*const V> {
-    type View = V;
-    
-    fn access<R, F>(self, _: F) -> Option<R> where
-        F: FnOnce(&mut V) -> R
-    {
-        None
-    }
-}
 

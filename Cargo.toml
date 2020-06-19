@@ -1,6 +1,6 @@
 [package]
 name = "smart_access"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["arbrk1 <arbrk1@gmail.com>"]
 edition = "2018"
 description = 'A minimalistic zero-dependency "lazy bidirectional pointer" framework.'
@@ -19,7 +19,8 @@ std = []
 std_collections = ["std"]
 batch_rt = ["std"]
 batch_ct = []
-default = ["std", "std_collections", "batch_rt", "batch_ct"]
+detach = []
+default = ["std", "std_collections", "batch_rt", "batch_ct", "detach"]
 
 [[test]]
 name = "no_std"

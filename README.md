@@ -30,7 +30,7 @@ in your `Cargo.toml`.
 
 ## Versions
 
-* `0.2.2`: WIP
+* `0.2.2`: New feature `detach` allows one to detach an accessor from the source of the data accessed.
 * `0.2.1`: Now really works on `no_std`.
 * `0.2.0`: Simplistic batch editing + breaking change for rt-batches + doc improvements.
 * `0.1.2`: A bit more user-friendly docs.

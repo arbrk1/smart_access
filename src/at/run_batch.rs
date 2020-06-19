@@ -4,16 +4,16 @@ use super::*;
 // trait used mainly for compile-time constructed call chains
 // private to crate::at
 pub trait RunBatch<View: ?Sized> {
-    type Result;
+    type Output;
 
-    fn run(self, view: &mut View) -> Self::Result;
+    fn run(self, view: &mut View) -> Self::Output;
 }
 
 
 #[cfg(feature="batch_ct")]
 impl<View: ?Sized> RunBatch<View> for () 
 {
-    type Result = ();
+    type Output = ();
 
     fn run(self, _view: &mut View) -> () { () }
 }
@@ -21,9 +21,9 @@ impl<View: ?Sized> RunBatch<View> for ()
 #[cfg(feature="batch_ct")]
 impl<View: ?Sized, Prev, F, R> RunBatch<View> for (Prev, F) where
     Prev: RunBatch<View>,
-    F: FnOnce(&mut View, Prev::Result) -> R
+    F: FnOnce(&mut View, Prev::Output) -> R
 {
-    type Result = R;
+    type Output = R;
 
     fn run(self, view: &mut View) -> R {
         let tmp = self.0.run(view);
@@ -34,7 +34,7 @@ impl<View: ?Sized, Prev, F, R> RunBatch<View> for (Prev, F) where
 
 #[cfg(feature="batch_rt")]
 impl<View: ?Sized, R> RunBatch<View> for Vec<FnBoxRt<View, R>> {
-    type Result = Option<R>;
+    type Output = Option<R>;
 
     fn run(self, view: &mut View) -> Option<R> {
         let mut current_result = None;
