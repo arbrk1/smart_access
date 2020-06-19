@@ -4,6 +4,9 @@ mod run_batch;  // a helper for compile-time batch execution
 #[cfg(any(feature="batch_rt", feature="batch_ct"))]
 use run_batch::RunBatch;
 
+use core::marker::PhantomData;
+
+
 
 /// A smart access protocol.
 ///
@@ -417,6 +420,20 @@ impl<T, V: ?Sized, Index> Cps for AT<T, Index> where
         let index = self.index;
 
         self.prev.access(|v| { v.access_at(index, f) }).flatten()
+    }
+}
+
+
+/// A helper for detached paths.
+///
+/// `access` returns `None`.
+impl<V: ?Sized> Cps for PhantomData<*const V> {
+    type View = V;
+    
+    fn access<R, F>(self, _: F) -> Option<R> where
+        F: FnOnce(&mut V) -> R
+    {
+        None
     }
 }
 
