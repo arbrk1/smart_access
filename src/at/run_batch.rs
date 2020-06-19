@@ -1,3 +1,4 @@
+#[cfg(feature="batch_rt")]
 use super::*;
 
 // trait used mainly for compile-time constructed call chains
@@ -8,6 +9,8 @@ pub trait RunBatch<View: ?Sized> {
     fn run(self, view: &mut View) -> Self::Result;
 }
 
+
+#[cfg(feature="batch_ct")]
 impl<View: ?Sized> RunBatch<View> for () 
 {
     type Result = ();
@@ -15,6 +18,7 @@ impl<View: ?Sized> RunBatch<View> for ()
     fn run(self, _view: &mut View) -> () { () }
 }
 
+#[cfg(feature="batch_ct")]
 impl<View: ?Sized, Prev, F, R> RunBatch<View> for (Prev, F) where
     Prev: RunBatch<View>,
     F: FnOnce(&mut View, Prev::Result) -> R
@@ -28,6 +32,7 @@ impl<View: ?Sized, Prev, F, R> RunBatch<View> for (Prev, F) where
     }
 }
 
+#[cfg(feature="batch_rt")]
 impl<View: ?Sized, R> RunBatch<View> for Vec<FnBoxRt<View, R>> {
     type Result = Option<R>;
 

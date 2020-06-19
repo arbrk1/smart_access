@@ -568,8 +568,9 @@
 //!
 //! ## Feature flags
 //!
-//! Currently there are three features:
+//! Currently there are following features:
 //!
+//! * `std`: Link to std
 //! * `std_collections`: Provides accessors for stdlib collections.
 //! * `batch_rt`: Provides runtime [batching](struct.CpsBatch.html).
 //! * `batch_ct`: Provides compile-time [batching](struct.CpsBatch.html). 
@@ -578,6 +579,8 @@
 //! All features are enabled by default.
 //!
 //! In a `no_std` environment `std_collections` and `batch_rt` must be disabled.
+
+#![cfg_attr(not(feature="std"), no_std)]
 
 mod at;
 pub mod core_impls;

@@ -1,5 +1,5 @@
 use crate::at::At;
-use std::ops;
+use core::ops;
 
 
 impl<T> At<usize> for [T] {

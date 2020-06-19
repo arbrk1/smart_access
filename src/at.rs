@@ -67,7 +67,7 @@ pub trait Cps {
         Self: Sized,
         Self::View: Sized 
     {
-        self.access(|x| std::mem::replace(x, new_val))
+        self.access(|x| core::mem::replace(x, new_val))
     }
 
     /// Equivalent to `self.access(|_| ())`
