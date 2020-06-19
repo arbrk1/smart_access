@@ -29,8 +29,13 @@
 //!   some view of data updates the data viewed to match the updated view)
 //!
 //! If you are aqcuainted with optics in functional languages you can 
-//! think of this crate as a minimalistic "lens" (more precisely, 
+//! think of this crate as a minimalistic &#8220;lens&#8221; (more precisely, 
 //! affine traversal) library using an imperative approach.
+//!
+//! ### Note
+//!
+//! As a side-effect of the library design one can use a &#8220;build&#8221; 
+//! pattern with standard `&mut` references (see below).
 //!
 //!
 //! ## Usage examples
@@ -49,6 +54,10 @@
 //! let baz = foo.at(2).at(1).replace(8);
 //! assert!(foo == vec![vec![1,7,3], vec![4,5,6]]);
 //! assert!(baz == None);  // None is returned if path doesn't make sense
+//!
+//! // Any mutable reference can be used as a "data location":
+//! assert!(foo[0][0].replace(9) == Some(1));
+//! assert!(foo == vec![vec![9,7,3], vec![4,5,6]]);
 //! ```
 //!
 //! A somewhat more interesting example:
@@ -71,6 +80,9 @@
 //! let bar = foo.at(1..4).access(|v| { *v = vec![v.iter().sum()]; "baz" });
 //! assert!(foo == vec![1,9,5,6]);
 //! assert!(bar == Some("baz"));
+//!
+//! // And with mutable references you get a sort of the "build" part of the Builder pattern
+//! foo[0].access(|x| { /* do something with the element */ });
 //! ```
 //!
 //!
@@ -81,6 +93,7 @@
 //! * choose some type `Index`
 //! * add trait [`At<Index>`](trait.At.html) to the type `Data`
 //! * implement [`access_at`](trait.At.html#tymethod.access_at) method
+//! * at the usage site write `use smart_access::Cps;`
 //! * PROFIT!
 //!
 //!
@@ -564,7 +577,7 @@
 //!
 //! All features are enabled by default.
 //!
-//! In a `no_std` environment the flags `std_collections` and `batch_rt` must be disabled.
+//! In a `no_std` environment `std_collections` and `batch_rt` must be disabled.
 
 mod at;
 pub mod core_impls;

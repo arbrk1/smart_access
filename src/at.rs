@@ -97,7 +97,7 @@ pub trait Cps {
 
     #[cfg(feature="batch_rt")]
     /// Constructs a [runtime batch](struct.CpsBatch.html).
-    fn batch_rt<R>(self) -> CpsBatch<Self, BatchRt<Self::View, R>> where
+    fn batch_rt<R>(self) -> CpsBatch<Self, Vec<FnBoxRt<Self::View, R>>> where
         Self: Sized,
     {
         CpsBatch { cps: self, list: Vec::new() }
@@ -154,18 +154,24 @@ pub trait Cps {
 ///
 /// for i in 1..=10 {
 ///     // "move" is required if the closure uses any local variables
-///     batch.add(move |v, _| { *v = *v + i; i });
+///     batch = batch.add(move |v, _| { *v = *v + i; i });
 /// }
 ///
 /// // Previous result can be used but it is wrapped in Option. 
 /// // This Option is None only in the first mutator in a batch, 
 /// // i.e. when there is no previous value.
-/// batch.add(|v, prev| { *v = *v * prev.unwrap(); 42 });
+/// batch = batch.add(|v, prev| { *v = *v * prev.unwrap(); 42 });
 ///
 /// // "Builder" style can also be used:
-/// batch
+/// batch = batch
 ///     .add(|v, prev| { *v = -*v; prev.unwrap() } )
 ///     .add(|v, prev| { *v = -*v; prev.unwrap() } );
+///
+/// // Runtime batches give a direct access to the vector of actions:
+/// batch.edit().access(|vec| {
+///     let f = vec.pop().unwrap();
+///     vec.push(f);
+/// });
 ///
 /// let result = batch.run();
 ///
@@ -181,7 +187,7 @@ pub struct CpsBatch<CPS, L> {
 }
 
 #[cfg(feature="batch_rt")]
-type BatchRt<V, R> = Vec<Box<dyn FnOnce(&mut V, Option<R>) -> R>>;
+type FnBoxRt<V, R> = Box<dyn FnOnce(&mut V, Option<R>) -> R>;
 
 
 /// An _empty_ compile-time batch.
@@ -221,11 +227,72 @@ impl<CPS,Prev,F,R> CpsBatch<CPS, (Prev, F)> where
     {
         CpsBatch { cps: self.cps, list: (self.list, g) }
     }
+
+    /// Takes the last function from a _nonempty_ compile-time batch.
+    ///
+    /// You can use it as follows:
+    ///
+    /// ```
+    /// # use smart_access::Cps;
+    /// let mut foo = 0;
+    /// let mut maybe_f = None;
+    /// foo.batch_ct()
+    ///     .add(|x, _| { *x += 1; })
+    ///     .add(|x, _| { *x += 1; })
+    ///     .pop(Some(&mut maybe_f))
+    ///     .run();
+    ///
+    /// assert!(foo == 1);
+    /// 
+    /// maybe_f.unwrap()(&mut foo, ());
+    /// assert!(foo == 2);
+    /// ```
+    pub fn pop(self, dst: Option<&mut Option<F>>) -> CpsBatch<CPS, Prev> {
+        let (prev, f) = self.list;
+        
+        if let Some(place) = dst { *place = Some(f); }
+        
+        CpsBatch { cps: self.cps, list: prev }
+    }
+
+    /// Clears a _nonempty_ compile-time batch.
+    pub fn clear(self) -> CpsBatch<CPS, ()> {
+        CpsBatch { cps: self.cps, list: () }
+    }
 }
 
+
+#[cfg(feature="batch_ct")]#[test]
+fn test_ct_batch_editing() {
+    use crate::Cps;
+    let mut foo = 1;
+
+    foo.batch_ct()
+        .add(|x, _| { *x += 1; })
+        .add(|x, _| { *x += 1; })
+        .pop(None)
+        .run();
+
+    assert!(foo == 2);
+    
+    foo.batch_ct()
+        .add(|x, _| { *x += 1; })
+        .add(|x, _| { *x += 1; })
+        .clear()
+        .run();
+
+    assert!(foo == 2);
+}
+
+
+
 /// A runtime batch.
+///
+/// Has two interfaces:
+/// * a direct access to the underlying vector: the `.edit()` method
+/// * a compile-time batch compatibility layer
 #[cfg(feature="batch_rt")]
-impl<CPS, R> CpsBatch<CPS, BatchRt<CPS::View, R>> where
+impl<CPS, R> CpsBatch<CPS, Vec<FnBoxRt<CPS::View, R>>> where
     CPS: Cps
 {
     /// Runs an empty runtime batch. 
@@ -240,16 +307,71 @@ impl<CPS, R> CpsBatch<CPS, BatchRt<CPS::View, R>> where
     }
     
     /// Adds a new function to a runtime batch.
-    pub fn add<F>(&mut self, f: F) -> &mut Self where 
+    pub fn add<F>(mut self, f: F) -> Self where 
         F: FnOnce(&mut CPS::View, Option<R>) -> R + 'static
     {
         self.list.push(Box::new(f));
 
         self
     }
+
+    /// Takes the last function from a runtime batch.
+    pub fn pop(mut self, dst: Option<&mut Option<FnBoxRt<CPS::View, R>>>) -> Self
+    {
+        let maybe_f = self.list.pop();
+
+        if let Some(place) = dst { *place = maybe_f; }
+
+        self
+    }
+
+    /// Clears a runtime batch.
+    pub fn clear(mut self) -> Self {
+        self.list.clear();
+
+        self
+    }
+
+    /// A direct access to the underlying vector.
+    pub fn edit(&mut self) -> &mut Vec<FnBoxRt<CPS::View, R>> {
+        &mut self.list
+    }
 }
 
 
+#[cfg(feature="batch_rt")]#[test]
+fn test_rt_batch_editing() {
+    use crate::Cps;
+    let mut foo = 1;
+
+    foo.batch_rt()
+        .add(|x, _| { *x += 1; })
+        .add(|x, _| { *x += 1; })
+        .pop(None)
+        .run();
+
+    assert!(foo == 2);
+    
+    foo.batch_rt()
+        .add(|x, _| { *x += 1; })
+        .add(|x, _| { *x += 1; })
+        .clear()
+        .run();
+
+    assert!(foo == 2);
+    
+    let mut maybe_f = None;
+    foo.batch_rt()
+        .add(|x, _| { *x += 1; })
+        .add(|x, _| { *x += 1; })
+        .pop(Some(&mut maybe_f))
+        .run();
+    
+    assert!(foo == 3);
+    
+    maybe_f.unwrap()(&mut foo, None);
+    assert!(foo == 4);
+}
 
 
 /// A &#8220;reference&#8221; to some &#8220;location&#8221;.

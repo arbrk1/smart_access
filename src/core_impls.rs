@@ -7,8 +7,23 @@
 //! * `At<(), View=R> for Result<R,E>`: access to the `Ok` value
 //!
 //! All implementations never panic: `None` is returned instead if the 
-//! index doesn't make any sense. If you want panicking behaviour simply 
-//! add `.unwrap()` to your access.
+//! index doesn't make sense. If you want panicking behaviour simply 
+//! add `.unwrap()` to your access:
+//!
+//! ``` should_panic
+//! # use smart_access::Cps;
+//! let mut foo = [0,1,2];
+//!
+//! (&mut foo[..]).at(3).access(|x| { *x += 1; }).unwrap();
+//! ```
+//!
+//! is the same as
+//!
+//! ``` should_panic
+//! # use smart_access::Cps;
+//! # let mut foo = [0,1,2];
+//! (&mut foo[..])[3].access(|x| { *x += 1; });
+//! ```
 
 mod slice;
 

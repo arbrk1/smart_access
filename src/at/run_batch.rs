@@ -28,7 +28,7 @@ impl<View: ?Sized, Prev, F, R> RunBatch<View> for (Prev, F) where
     }
 }
 
-impl<View: ?Sized, R> RunBatch<View> for BatchRt<View, R> {
+impl<View: ?Sized, R> RunBatch<View> for Vec<FnBoxRt<View, R>> {
     type Result = Option<R>;
 
     fn run(self, view: &mut View) -> Option<R> {
