@@ -7,6 +7,12 @@ pub struct AttachedRoot<T>(pub T);
 #[derive(Debug, Clone)]
 pub struct DetachedRoot<V: ?Sized>(PhantomData<*const V>);
 
+impl<V: ?Sized> DetachedRoot<V> {
+    pub fn new() -> Self {
+        DetachedRoot(PhantomData)
+    }
+}
+
 
 /// A helper for attached paths.
 ///
@@ -63,8 +69,16 @@ impl<Prev, Index> Detach for AT<Prev, Index> where
 }
 
 
+/// A detached path. __Requires `detach` feature.__
+///
+/// Intended to be used as an `Attach<CPS, View=V>` bound.
+///
+/// Can be created by a [`detached_at`](fn.detached_at.html) function.
+///
+/// See examples [here](struct.AT.html) and [here](fn.detached_at.html).
 pub trait Attach<CPS: Cps> {
-    type Output;
+    type Output: Cps<View=Self::View>;
+    type View: ?Sized;
 
     fn attach(self, cps: CPS) -> Self::Output;
 }
@@ -72,16 +86,19 @@ pub trait Attach<CPS: Cps> {
 
 impl<CPS: Cps> Attach<CPS> for DetachedRoot<CPS::View> {
     type Output = AttachedRoot<CPS>;
+    type View = CPS::View;
 
     fn attach(self, cps: CPS) -> Self::Output {
         AttachedRoot(cps)
     }
 }
 
-impl<CPS: Cps, Prev, Index> Attach<CPS> for AT<Prev, Index> where
-    Prev: Attach<CPS>
+impl<CPS: Cps, Prev, Index, V> Attach<CPS> for AT<Prev, Index> where
+    Prev: Attach<CPS>,
+    Prev::View: At<Index, View=V>,
 {
     type Output = AT<Prev::Output, Index>;
+    type View = V;
 
     fn attach(self, cps: CPS) -> Self::Output {
         AT { prev: self.prev.attach(cps), index: self.index }

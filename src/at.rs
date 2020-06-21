@@ -8,7 +8,10 @@ use run_batch::RunBatch;
 mod detach; // detached paths
 
 #[cfg(feature="detach")]
-use detach::{ AttachedRoot, Attach, Detach };
+use detach::{ AttachedRoot, DetachedRoot, Detach };
+
+#[cfg(feature="detach")]
+pub use detach::{ Attach };
 
 #[cfg(not(feature="detach"))]
 type AttachedRoot<T> = T;
@@ -143,7 +146,7 @@ pub trait Cps {
 }
 
 
-/// A builder for complex mutations.
+/// A builder for complex mutations. __Requires `batch_ct` or `batch_rt`.__
 ///
 /// Comes in two flavors.
 ///
@@ -424,12 +427,34 @@ fn test_rt_batch_editing() {
 /// [`impl Cps<View=T>`](trait.Cps.html) as a return type of your functions 
 /// and [`Cps<View=T>`](trait.Cps.html) bounds on their parameters.
 ///
-/// Enabling `detach` feature allows one to detach `AT`s from their roots. 
+/// Enabling `detach` feature allows one to [detach](#method.detach) `AT`s from their roots. 
 /// 
 /// ### Note
 ///
-/// If you pass a detached path to a function then you have to use 
-/// `AT<P,I>` instead of a `Cps`-bounded parameter as an argument type.
+/// If you pass a detached path to a function then you should use 
+/// an [`Attach<CPS, View=V>`](trait.Attach.html) bound 
+/// instead of a [`Cps<View=V>`](trait.Cps.html) bound.
+///
+/// I.e.
+///
+/// ```
+/// # #[cfg(feature="detach")] fn test() {
+/// # use smart_access::{Cps, Attach, detached_at};
+/// fn replace_at<CPS, Path, V>(cps: CPS, path: Path, x: V) -> Option<V> where
+///     CPS: Cps,
+///     Path: Attach<CPS,View=V>
+/// {
+///     cps.attach(path).replace(x)
+/// }
+///
+/// let mut vec = vec![1,2,3];
+///
+/// assert!(replace_at(&mut vec, detached_at(0), 4) == Some(1));
+/// assert!(vec == vec![4,2,3]);
+/// # }
+/// # #[cfg(not(feature="detach"))] fn test() {}
+/// # test();
+/// ```
 #[must_use]
 #[cfg_attr(feature="detach", derive(Clone))]
 #[derive(Debug)]
@@ -438,6 +463,11 @@ pub struct AT<T, Index> {
     index: Index,
 }
 
+
+#[cfg(feature="detach")]
+impl<T, I, Detached> AT<T, I> where
+    AT<T, I>: Detach<Output=Detached>
+{
 
 /// Detaches the path.
 ///
@@ -468,14 +498,11 @@ pub struct AT<T, Index> {
 /// bar.attach(path).replace(3);
 /// assert!(bar == vec![vec![vec![3]]]);
 /// ```
-#[cfg(feature="detach")]
-impl<T, I, Detached> AT<T, I> where
-    AT<T, I>: Detach<Output=Detached>
-{
     pub fn detach(self) -> Detached {
         <Self as Detach>::detach(self)
     }
 }
+
 
 /// A helper `at` method overriding the `Cps` default.
 ///
@@ -490,6 +517,90 @@ impl<T,I> AT<T, I> where
         AT { prev: self, index: i } 
     }
 }
+
+
+/// Creates a detached path. __Requires `detach` feature.__
+///
+/// A type of the return value of `detached_at::<V>` 
+/// implements [`Attach<CPS: Cps<View=V>, View=V>`](trait.Attach.html).
+///
+/// _Present only on `detach`._
+///
+/// ### Usage example
+///
+/// A simple case when detached paths could be helpful: creating 
+/// a detached path and cloning it several times.
+///
+/// ```
+/// use smart_access::Cps;
+///
+/// let reference_path = smart_access::detached_at(()).at(()).at(());
+///
+/// let mut items = vec![ Some(Some(Ok(1))), Some(None), Some(Some(Err(2))) ];
+///
+/// let sum = items.iter_mut().map(|wrapped| {
+///     wrapped.attach(reference_path.clone())
+///         .access(|x| *x) 
+///         .into_iter() 
+///         .sum::<i32>()
+/// }).sum::<i32>();
+///
+/// assert!(sum == 1);
+/// ```
+///
+/// A more convoluted example: a functional index combinator.
+///
+/// ```
+/// use smart_access::{Cps, Attach};
+///
+/// type Mat = Vec<Vec<f64>>;
+///
+/// fn mat_index<'a>(i: usize, j: usize) -> impl Attach<&'a mut Mat, View=f64> {
+///     smart_access::detached_at(i).at(j)
+/// }
+///
+/// let mut mat = vec![
+///     vec![1., 2.],
+///     vec![3., 4.]
+/// ];
+///
+/// assert!(mat.attach(mat_index(1,1)).replace(0.) == Some(4.));
+/// ```
+/// 
+/// But note that a more idiomatic approach would be
+///
+/// ```
+/// use smart_access::{Cps, At};
+///
+/// struct Mat { numbers: Vec<Vec<f64>> };
+///
+/// impl At<(usize, usize)> for Mat {
+///     type View = f64;
+///
+///     fn access_at<R,F>(&mut self, ij: (usize, usize), f: F) -> Option<R> where
+///         F: FnOnce(&mut f64) -> R
+///     {
+///         let (i, j) = ij;
+///
+///         self.numbers.at(i).at(j).access(f)
+///     }
+/// }
+///
+/// let mut mat = Mat { numbers: vec![
+///     vec![1., 2.],
+///     vec![3., 4.]
+/// ]};
+///
+/// assert!(mat.at( (1,1) ).replace(0.) == Some(4.));
+/// ```
+#[cfg(feature="detach")]
+pub fn detached_at<View: ?Sized, I>(i: I) -> AT<DetachedRoot<View>, I> {
+    AT {
+        prev: DetachedRoot::new(),
+        index: i,
+    }
+}
+
 
 
 /// `access` is guaranteed to return `Some(f(..))`

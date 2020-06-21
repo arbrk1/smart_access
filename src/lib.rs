@@ -575,7 +575,7 @@
 //! * `batch_rt`: Provides runtime [batching](struct.CpsBatch.html).
 //! * `batch_ct`: Provides compile-time [batching](struct.CpsBatch.html). 
 //!   Compatible with `no_std`.
-//! * `detach`: Makes [`AT`-paths](struct.AT.html) detachable. 
+//! * `detach`: Makes [`AT`](struct.AT.html)-paths [detachable](struct.AT.html#method.detach). 
 //!   Compatible with `no_std`.
 //!
 //! All features are enabled by default.
@@ -592,4 +592,7 @@ pub use at::{At, AT, Cps};
 
 #[cfg(any(feature="batch_rt", feature="batch_ct"))]
 pub use at::CpsBatch;
+
+#[cfg(feature="detach")]
+pub use at::{ Attach, detached_at };
 
