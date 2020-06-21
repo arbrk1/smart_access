@@ -1,5 +1,8 @@
 # Smart accessors for Rust
 
+![crate](https://img.shields.io/crates/v/smart_access)
+![docs](https://docs.rs/smart_access/badge.svg)
+
 ## Overview
 
 There are many sorts of &#8220;smart pointers&#8221;. They have following things in common:
