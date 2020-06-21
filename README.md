@@ -1,7 +1,7 @@
 # Smart accessors for Rust
 
-![crate](https://img.shields.io/crates/v/smart_access)
-![docs](https://docs.rs/smart_access/badge.svg)
+[![crate](https://img.shields.io/crates/v/smart_access)](https://crates.io/crates/smart_access/)
+[![docs](https://docs.rs/smart_access/badge.svg)](https://docs.rs/smart_access/)
 
 ## Overview
 
