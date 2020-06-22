@@ -26,13 +26,14 @@ For code examples see [the docs](https://docs.rs/smart_access/).
 Simply include 
 
 ```
-smart_access = "0.3"
+smart_access = "0.4"
 ```
 
 in your `Cargo.toml`.
 
 ## Versions
 
+* `0.4.0`: Public API for using access batches as function inputs/outputs.
 * `0.3.0`: Public API for using detached accessors as function inputs/outputs.
 * `0.2.2`: New feature `detach` allows one to detach an accessor from the source of the data accessed.
 * `0.2.1`: Now really works on `no_std`.

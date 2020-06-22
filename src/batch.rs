@@ -36,7 +36,7 @@ use crate::at::Cps;
 /// assert!(foo == (0 + 2) * 42);
 /// ```
 ///
-/// Is abstracted by a trait [`BatchCt`](trait.BatchCt.html).
+/// Compile-time batches are abstracted by the trait [`BatchCt`](trait.BatchCt.html).
 ///
 ///
 /// ## Runtime version
@@ -82,7 +82,7 @@ use crate::at::Cps;
 /// assert!(foo == (1..=10).sum::<i32>() * 10);
 /// ```
 ///
-/// Is abstracted by a trait [`BatchRt`](trait.BatchRt.html).
+/// Runtime batches are abstracted by the trait [`BatchRt`](trait.BatchRt.html).
 #[must_use]
 pub struct CpsBatch<CPS, L> {
     cps: CPS,
@@ -195,9 +195,7 @@ fn test_ct_batch_editing() {
 /// * a direct access to the underlying vector: the `.edit()` method
 /// * a compile-time batch compatibility layer
 #[cfg(feature="batch_rt")]
-impl<CPS, R> CpsBatch<CPS, Vec<FnBoxRt<CPS::View, R>>> where
-    CPS: Cps
-{
+impl<CPS: Cps, R> CpsBatch<CPS, Vec<FnBoxRt<CPS::View, R>>> {
     /// Runs an empty runtime batch. 
     ///
     /// Immediately returns `None` if the batch is empty.
@@ -296,12 +294,16 @@ pub fn new_batch_rt<CPS, V, R>(cps: CPS) -> CpsBatch<CPS, Vec<FnBoxRt<V,R>>> whe
 /// An abstraction over compile-time and runtime batches. 
 /// __Requires `batch_ct` or `batch_rt`.__
 ///
+/// The only thing which can be done with a value of `Batch`-bounded 
+/// type is to [`.run()`](trait.Batch.html#tymethod.run) it.
+///
 /// Useful as a bound on a function return type.
 ///
-/// If the value returned by a function is to be used later 
-/// as a batch then consider to use more precise bounds:
+/// If the batch returned by a function is to be edited later 
+/// then consider using more precise bounds:
 /// [`BatchCt`](trait.BatchCt.html) and [`BatchRt`](trait.BatchRt.html).
-pub trait Batch<R> {
+#[must_use]
+pub trait Batch<R>: Sized {
     fn run(self) -> Option<R>;
 }
 
@@ -343,33 +345,38 @@ impl<CPS: Cps, R> Batch<R> for CpsBatch<CPS, Vec<FnBoxRt<CPS::View, R>>> {
 /// ```
 /// use smart_access::{ BatchCt, Cps };
 ///
-/// fn add_inc<CPS, T>(batch: impl BatchCt<CPS, i32, T>) -> impl BatchCt<CPS, i32, ()> where
-///     CPS: Cps<View=i32>
+/// fn add_inc<T>(batch: impl BatchCt<i32, T>) -> impl BatchCt<i32, ()>
 /// {
 ///     batch.add(|x, _| { *x = *x + 1; })
 /// }
+///
+/// let mut foo = 1;
+///
+/// add_inc(add_inc(foo.batch_ct())).run();
+/// assert!(foo == 3);
 /// ```
-///
-/// ### Note
-///
-/// The need for `V` in `BatchCt<CPS, V, R>` is due to the
-/// [issue #20671](https://github.com/rust-lang/rust/issues/20671).
-///
 #[cfg(feature="batch_ct")]#[must_use]
-pub trait BatchCt<CPS: Cps<View=V>, V: ?Sized, R>: Batch<R> {
+pub trait BatchCt<V: ?Sized, R>: Batch<R> {
+    type CPS: Cps<View=V>;
     type List: RunBatch<V, Output=R>;
 
     /// Adds a new function to a compile-time batch.
-    fn add<G, S>(self, g: G) -> CpsBatch<CPS, (Self::List, G)> where 
-        G: FnOnce(&mut CPS::View, R) -> S;
+    fn add<G, S>(self, g: G) -> CpsBatch<Self::CPS, (Self::List, G)> where 
+        G: FnOnce(&mut V, R) -> S;
 
     /// Clears a compile-time batch.
-    fn clear(self) -> CpsBatch<CPS, ()>;
+    fn clear(self) -> CpsBatch<Self::CPS, ()>;
+
+    /// [Runs](trait.Batch.html#tymethod.run) a compile-time batch.
+    fn run(self) -> Option<R> {
+        <Self as Batch<R>>::run(self)
+    }
 }
 
 
 #[cfg(feature="batch_ct")]
-impl<CPS: Cps> BatchCt<CPS, CPS::View, ()> for CpsBatch<CPS, ()> {
+impl<CPS: Cps> BatchCt<CPS::View, ()> for CpsBatch<CPS, ()> {
+    type CPS = CPS;
     type List = ();
     
     fn add<G, S>(self, g: G) -> CpsBatch<CPS, (Self::List, G)> where 
@@ -385,10 +392,11 @@ impl<CPS: Cps> BatchCt<CPS, CPS::View, ()> for CpsBatch<CPS, ()> {
 
 
 #[cfg(feature="batch_ct")]
-impl<CPS: Cps, Prev, F, R> BatchCt<CPS, CPS::View, R> for CpsBatch<CPS, (Prev, F)> where
+impl<CPS, Prev, F, R> BatchCt<CPS::View, R> for CpsBatch<CPS, (Prev, F)> where
     CPS: Cps,
     (Prev,F): RunBatch<CPS::View, Output=R>
 {
+    type CPS = CPS;
     type List = (Prev, F);
     
     fn add<G, S>(self, g: G) -> CpsBatch<CPS, (Self::List, G)> where 
@@ -406,6 +414,23 @@ impl<CPS: Cps, Prev, F, R> BatchCt<CPS, CPS::View, R> for CpsBatch<CPS, (Prev, F
 /// A runtime batch. __Requires `batch_rt` feature.__
 ///
 /// See basic usage guide [here](struct.CpsBatch.html).
+///
+/// Allows one to write batch transformers without specifying complex
+/// return types.
+///
+/// ```
+/// use smart_access::{ BatchRt, Cps };
+///
+/// fn add_inc(batch: impl BatchRt<i32, ()>) -> impl BatchRt<i32, ()>
+/// {
+///     batch.add(|x, _| { *x = *x + 1; })
+/// }
+///
+/// let mut foo = 1;
+///
+/// add_inc(add_inc(foo.batch_rt())).run();
+/// assert!(foo == 3);
+/// ```
 #[cfg(feature="batch_rt")]#[must_use]
 pub trait BatchRt<View: ?Sized, R>: Batch<R> {
     /// Adds a new function to a runtime batch.
@@ -420,4 +445,34 @@ pub trait BatchRt<View: ?Sized, R>: Batch<R> {
 
     /// A direct access to the underlying vector.
     fn edit(&mut self) -> &mut Vec<FnBoxRt<View, R>>;
+    
+    /// [Runs](trait.Batch.html#tymethod.run) a runtime batch.
+    fn run(self) -> Option<R> {
+        <Self as Batch<R>>::run(self)
+    }
+}
+
+
+#[cfg(feature="batch_rt")]
+impl<CPS: Cps, R> BatchRt<CPS::View, R> for 
+    CpsBatch<CPS, Vec<FnBoxRt<CPS::View, R>>> 
+{
+    fn add<G>(self, g: G) -> Self
+        where G: FnOnce(&mut CPS::View, Option<R>) -> R + 'static 
+    {
+        self.add(g)
+    }
+
+    fn clear(self) -> Self {
+        self.clear()
+    }
+    
+    fn pop(self, dst: Option<&mut Option<FnBoxRt<CPS::View, R>>>) -> Self {
+        self.pop(dst)
+    }
+
+    fn edit(&mut self) -> &mut Vec<FnBoxRt<CPS::View, R>> {
+        self.edit()
+    }
+
 }

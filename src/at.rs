@@ -127,7 +127,7 @@ pub trait Cps: Sized {
     }
 
     #[cfg(feature="detach")]
-    /// Attaches a [detached](struct.AT.html) path.
+    /// Attaches a [detached](trait.Attach.html) path.
     ///
     /// __Not intended for overriding.__
     ///
