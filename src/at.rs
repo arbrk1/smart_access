@@ -1,8 +1,11 @@
-#[cfg(any(feature="batch_rt", feature="batch_ct"))]
-mod run_batch;  // a helper for compile-time batch execution
+#[cfg(any(feature="batch_ct", feature="batch_rt"))]
+use crate::batch::{ CpsBatch };
 
-#[cfg(any(feature="batch_rt", feature="batch_ct"))]
-use run_batch::RunBatch;
+#[cfg(feature="batch_ct")]
+use crate::batch::{ new_batch_ct };
+
+#[cfg(feature="batch_rt")]
+use crate::batch::{ new_batch_rt, FnBoxRt };
 
 #[cfg(feature="detach")]
 mod detach; // detached paths
@@ -68,19 +71,17 @@ pub trait At<Index> {
 /// In fact all default implementors of `Cps` have an internal lifetime 
 /// parameter. If needed it can be exposed using `+ 'a` syntax in a trait 
 /// bound, but in many cases one can do very well without any explicit lifetimes.
-pub trait Cps {
+pub trait Cps: Sized {
     type View: ?Sized;
 
     /// Returns `Some(f(..))` or `None`.
     ///
     /// The rules governing the value returned are defined by an implementation.
     fn access<R, F>(self, f: F) -> Option<R> where
-        Self: Sized,
         F: FnOnce(&mut Self::View) -> R;
 
     /// Equivalent to `self.access(|x| std::mem::replace(x, new_val))`
     fn replace(self, new_val: Self::View) -> Option<Self::View> where
-        Self: Sized,
         Self::View: Sized 
     {
         self.access(|x| core::mem::replace(x, new_val))
@@ -88,7 +89,6 @@ pub trait Cps {
 
     /// Equivalent to `self.access(|_| ())`
     fn touch(self) -> Option<()> where
-        Self: Sized
     {
         self.access(|_| ())
     }
@@ -101,7 +101,6 @@ pub trait Cps {
     /// then you have enabled the `detach` feature. Without `detach` that part 
     /// is simply `Self`._
     fn at<Index>(self, i: Index) -> AT<AttachedRoot<Self>, Index> where
-        Self: Sized,
         Self::View: At<Index>
     {
         AT { prev: AttachedRoot(self), index: i } 
@@ -113,10 +112,8 @@ pub trait Cps {
     /// __Not intended for overriding.__
     ///
     /// _Present only on `batch_ct`._
-    fn batch_ct(self) -> CpsBatch<Self, ()> where
-        Self: Sized,
-    {
-        CpsBatch { cps: self, list: () }
+    fn batch_ct(self) -> CpsBatch<Self, ()> {
+        new_batch_ct(self)
     }
 
     #[cfg(feature="batch_rt")]
@@ -125,10 +122,8 @@ pub trait Cps {
     /// __Not intended for overriding.__
     ///
     /// _Present only on `batch_rt`._
-    fn batch_rt<R>(self) -> CpsBatch<Self, Vec<FnBoxRt<Self::View, R>>> where
-        Self: Sized,
-    {
-        CpsBatch { cps: self, list: Vec::new() }
+    fn batch_rt<R>(self) -> CpsBatch<Self, Vec<FnBoxRt<Self::View, R>>> {
+        new_batch_rt(self)
     }
 
     #[cfg(feature="detach")]
@@ -138,282 +133,12 @@ pub trait Cps {
     ///
     /// _Present only on `detach`._
     fn attach<Path>(self, path: Path) -> Path::Output where
-        Self: Sized,
         Path: Attach<Self>
     {
         path.attach(self)
     }
 }
 
-
-/// A builder for complex mutations. __Requires `batch_ct` or `batch_rt`.__
-///
-/// Comes in two flavors.
-///
-/// ## Compile-time version
-///
-/// Created by method `.batch_ct()` of any [`Cps`](trait.Cps.html)-bounded value.
-///
-/// Efficient but can't be combined with loops (and is difficult to use in 
-/// presence of conditional branches).
-///
-/// ### Example
-///
-/// ```
-/// use smart_access::Cps;
-///
-/// let mut foo = 0;
-///
-/// // here we use a mutable reference as a Cps-bounded value
-/// let batch = (&mut foo).batch_ct();
-/// 
-/// // compile-time batches are immutable because adding a new mutator changes type of the batch
-/// let batch = batch
-///     .add(|v, _| { *v = *v + 2; 42 })
-///     .add(|v, x| { *v = *v * x; "Hello!" });
-///
-/// let result = batch.run();
-/// 
-/// assert!(result == Some("Hello!"));
-/// assert!(foo == (0 + 2) * 42);
-/// ```
-///
-///
-/// ## Runtime version
-///
-/// Created by method `.batch_rt()`. Can be combined with loops but every `.add` consumes some memory.
-///
-/// _Almost_ compatible with compile-time version but with some quirks.
-///
-/// ### Example
-///
-/// ```
-/// use smart_access::Cps;
-///
-/// let mut foo = 0;
-///
-/// let mut batch = (&mut foo).batch_rt();
-///
-/// for i in 1..=10 {
-///     // "move" is required if the closure uses any local variables
-///     batch = batch.add(move |v, _| { *v = *v + i; i });
-/// }
-///
-/// // Previous result can be used but it is wrapped in Option. 
-/// // This Option is None only in the first mutator in a batch, 
-/// // i.e. when there is no previous value.
-/// batch = batch.add(|v, prev| { *v = *v * prev.unwrap(); 42 });
-///
-/// // "Builder" style can also be used:
-/// batch = batch
-///     .add(|v, prev| { *v = -*v; prev.unwrap() } )
-///     .add(|v, prev| { *v = -*v; prev.unwrap() } );
-///
-/// // Runtime batches give a direct access to the vector of actions:
-/// batch.edit().access(|vec| {
-///     let f = vec.pop().unwrap();
-///     vec.push(f);
-/// });
-///
-/// let result = batch.run();
-///
-/// // Unlike compile-time batches all intermediate results must be of the same type.
-/// assert!(result == Some(42)); 
-/// assert!(foo == (1..=10).sum::<i32>() * 10);
-/// ```
-#[cfg(any(feature="batch_rt", feature="batch_ct"))]
-#[must_use]
-pub struct CpsBatch<CPS, L> {
-    cps: CPS,
-    list: L,
-}
-
-#[cfg(feature="batch_rt")]
-type FnBoxRt<V, R> = Box<dyn FnOnce(&mut V, Option<R>) -> R>;
-
-
-/// An _empty_ compile-time batch.
-#[cfg(feature="batch_ct")]
-impl<CPS> CpsBatch<CPS, ()> where
-    CPS: Cps
-{
-    /// Runs an _empty_ compile-time batch. 
-    ///
-    /// Immediately returns `None`.
-    pub fn run(self) -> Option<()> { None }
-
-    /// Adds a new function to an _empty_ compile-time batch.
-    pub fn add<F, R>(self, f: F) -> CpsBatch<CPS, ((), F)>
-        where F: FnOnce(&mut CPS::View, ()) -> R
-    {
-        CpsBatch { cps: self.cps, list: (self.list, f) }
-    }
-}
-
-/// A _nonempty_ compile-time batch.
-#[cfg(feature="batch_ct")]
-impl<CPS,Prev,F,R> CpsBatch<CPS, (Prev, F)> where
-    CPS: Cps,
-    (Prev,F): RunBatch<CPS::View, Output=R>,
-{
-    /// Runs a _nonempty_ compile-time batch.
-    pub fn run(self) -> Option<R> {
-        let list = self.list;
-
-        self.cps.access(|v| list.run(v))
-    }
-    
-    /// Adds a new function to a _nonempty_ compile-time batch.
-    pub fn add<G, S>(self, g: G) -> CpsBatch<CPS, ((Prev, F), G)>
-        where G: FnOnce(&mut CPS::View, R) -> S
-    {
-        CpsBatch { cps: self.cps, list: (self.list, g) }
-    }
-
-    /// Takes the last function from a _nonempty_ compile-time batch.
-    ///
-    /// You can use it as follows:
-    ///
-    /// ```
-    /// # use smart_access::Cps;
-    /// let mut foo = 0;
-    /// let mut maybe_f = None;
-    /// foo.batch_ct()
-    ///     .add(|x, _| { *x += 1; })
-    ///     .add(|x, _| { *x += 1; })
-    ///     .pop(Some(&mut maybe_f))
-    ///     .run();
-    ///
-    /// assert!(foo == 1);
-    /// 
-    /// maybe_f.unwrap()(&mut foo, ());
-    /// assert!(foo == 2);
-    /// ```
-    pub fn pop(self, dst: Option<&mut Option<F>>) -> CpsBatch<CPS, Prev> {
-        let (prev, f) = self.list;
-        
-        if let Some(place) = dst { *place = Some(f); }
-        
-        CpsBatch { cps: self.cps, list: prev }
-    }
-
-    /// Clears a _nonempty_ compile-time batch.
-    pub fn clear(self) -> CpsBatch<CPS, ()> {
-        CpsBatch { cps: self.cps, list: () }
-    }
-}
-
-
-#[cfg(feature="batch_ct")]#[test]
-fn test_ct_batch_editing() {
-    use crate::Cps;
-    let mut foo = 1;
-
-    foo.batch_ct()
-        .add(|x, _| { *x += 1; })
-        .add(|x, _| { *x += 1; })
-        .pop(None)
-        .run();
-
-    assert!(foo == 2);
-    
-    foo.batch_ct()
-        .add(|x, _| { *x += 1; })
-        .add(|x, _| { *x += 1; })
-        .clear()
-        .run();
-
-    assert!(foo == 2);
-}
-
-
-
-/// A runtime batch.
-///
-/// Has two interfaces:
-/// * a direct access to the underlying vector: the `.edit()` method
-/// * a compile-time batch compatibility layer
-#[cfg(feature="batch_rt")]
-impl<CPS, R> CpsBatch<CPS, Vec<FnBoxRt<CPS::View, R>>> where
-    CPS: Cps
-{
-    /// Runs an empty runtime batch. 
-    ///
-    /// Immediately returns `None` if the batch is empty.
-    pub fn run(self) -> Option<R> {
-        let list = self.list;
-
-        if list.len() == 0 { return None; }
-
-        self.cps.access(|v| list.run(v)).map(|x| x.unwrap())
-    }
-    
-    /// Adds a new function to a runtime batch.
-    pub fn add<F>(mut self, f: F) -> Self where 
-        F: FnOnce(&mut CPS::View, Option<R>) -> R + 'static
-    {
-        self.list.push(Box::new(f));
-
-        self
-    }
-
-    /// Takes the last function from a runtime batch.
-    pub fn pop(mut self, dst: Option<&mut Option<FnBoxRt<CPS::View, R>>>) -> Self
-    {
-        let maybe_f = self.list.pop();
-
-        if let Some(place) = dst { *place = maybe_f; }
-
-        self
-    }
-
-    /// Clears a runtime batch.
-    pub fn clear(mut self) -> Self {
-        self.list.clear();
-
-        self
-    }
-
-    /// A direct access to the underlying vector.
-    pub fn edit(&mut self) -> &mut Vec<FnBoxRt<CPS::View, R>> {
-        &mut self.list
-    }
-}
-
-
-#[cfg(feature="batch_rt")]#[test]
-fn test_rt_batch_editing() {
-    use crate::Cps;
-    let mut foo = 1;
-
-    foo.batch_rt()
-        .add(|x, _| { *x += 1; })
-        .add(|x, _| { *x += 1; })
-        .pop(None)
-        .run();
-
-    assert!(foo == 2);
-    
-    foo.batch_rt()
-        .add(|x, _| { *x += 1; })
-        .add(|x, _| { *x += 1; })
-        .clear()
-        .run();
-
-    assert!(foo == 2);
-    
-    let mut maybe_f = None;
-    foo.batch_rt()
-        .add(|x, _| { *x += 1; })
-        .add(|x, _| { *x += 1; })
-        .pop(Some(&mut maybe_f))
-        .run();
-    
-    assert!(foo == 3);
-    
-    maybe_f.unwrap()(&mut foo, None);
-    assert!(foo == 4);
-}
 
 
 /// A &#8220;reference&#8221; to some &#8220;location&#8221;.

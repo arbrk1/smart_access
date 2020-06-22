@@ -1,8 +1,9 @@
 #[cfg(feature="batch_rt")]
-use super::*;
+use super::{ FnBoxRt };
 
 // trait used mainly for compile-time constructed call chains
-// private to crate::at
+//
+// Is private to the "crate::batch" module.
 pub trait RunBatch<View: ?Sized> {
     type Output;
 

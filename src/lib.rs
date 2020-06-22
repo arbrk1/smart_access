@@ -591,7 +591,16 @@ pub mod stdlib_impls;
 pub use at::{At, AT, Cps};
 
 #[cfg(any(feature="batch_rt", feature="batch_ct"))]
-pub use at::CpsBatch;
+mod batch;
+
+#[cfg(any(feature="batch_rt", feature="batch_ct"))]
+pub use batch::{ CpsBatch, Batch };
+
+#[cfg(feature="batch_ct")]
+pub use batch::{ BatchCt };
+
+#[cfg(feature="batch_rt")]
+pub use batch::{ BatchRt };
 
 #[cfg(feature="detach")]
 pub use at::{ Attach, detached_at };
