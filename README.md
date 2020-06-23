@@ -31,8 +31,34 @@ smart_access = "0.4"
 
 in your `Cargo.toml`.
 
+### Variants
+
+The library, although being very small, includes some pluggable components.
+
+For a bare-bones version use
+
+```
+smart_access = { version = "0.4", default-features = false }
+```
+
+But usually you'll want something more convenient.
+
+#### Accessors for Vec, HashMap and BTreeMap
+
+```
+smart_access = { version = "0.4", default-features = false, features = ["std_collections"] }
+```
+
+#### A maximal `no_std` variant
+
+```
+smart_access = { version = "0.4", default-features = false, features = ["batch_ct", "detach"] }
+```
+
+
 ## Versions
 
+* `0.4.1`: WIP
 * `0.4.0`: Public API for using access batches as function inputs/outputs.
 * `0.3.0`: Public API for using detached accessors as function inputs/outputs.
 * `0.2.2`: New feature `detach` allows one to detach an accessor from the source of the data accessed.
