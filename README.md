@@ -26,7 +26,7 @@ For code examples see [the docs](https://docs.rs/smart_access/).
 Simply include 
 
 ```
-smart_access = "0.4"
+smart_access = "0.5"
 ```
 
 in your `Cargo.toml`.
@@ -38,7 +38,7 @@ The library, although being very small, includes some pluggable components.
 For a bare-bones version use
 
 ```
-smart_access = { version = "0.4", default-features = false }
+smart_access = { version = "0.5", default-features = false }
 ```
 
 But usually you'll want something more convenient.
@@ -46,24 +46,19 @@ But usually you'll want something more convenient.
 #### Accessors for Vec, HashMap and BTreeMap
 
 ```
-smart_access = { version = "0.4", default-features = false, features = ["std_collections"] }
+smart_access = { version = "0.5", default-features = false, features = ["std_collections"] }
 ```
 
 #### A maximal `no_std` variant
 
 ```
-smart_access = { version = "0.4", default-features = false, features = ["batch_ct", "detach"] }
+smart_access = { version = "0.5", default-features = false, features = ["batch_ct", "detach"] }
 ```
-
-### Beware
-
-The `detach` feature as currently implemented has serious limitations.
-
-This feature is being currently reworked so try not to rely on it.
 
 
 ## Versions
 
+* `0.5.0`: The `detach` feature has been reworked. (WIP)
 * `0.4.1`: Fixed some serious bugs in the `detach`-enabled version of the crate.
 * `0.4.0`: Public API for using access batches as function inputs/outputs.
 * `0.3.0`: Public API for using detached accessors as function inputs/outputs.

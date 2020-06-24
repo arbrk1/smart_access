@@ -2,7 +2,7 @@ use super::*;
 use core::marker::PhantomData;
 
 #[derive(Debug)]
-pub struct AttachedRoot<T>(pub T);
+pub struct DetachPoint<T>(pub T);
 
 #[derive(Debug, Clone)]
 pub struct DetachedRoot<V: ?Sized>(PhantomData<*const V>);
@@ -17,7 +17,7 @@ impl<V: ?Sized> DetachedRoot<V> {
 /// A helper for attached paths.
 ///
 /// Forwards the access query to the wrapped type.
-impl<T> Cps for AttachedRoot<T> where
+impl<T> Cps for DetachPoint<T> where
     T: Cps
 {    
     type View = T::View;
@@ -43,28 +43,33 @@ impl<V: ?Sized> Cps for DetachedRoot<V> {
     }
 }
 
-
+#[must_use]
 pub trait Detach {
-    type Output;
+    type Left;
+    type Right;
 
-    fn detach(self) -> Self::Output;
+    fn detach(self) -> (Self::Left, Self::Right);
 }
 
-impl<CPS: Cps> Detach for AttachedRoot<CPS> {
-    type Output = DetachedRoot<CPS::View>;
+impl<CPS: Cps> Detach for DetachPoint<CPS> {
+    type Left = CPS;
+    type Right = DetachedRoot<CPS::View>;
 
-    fn detach(self) -> Self::Output {
-        DetachedRoot(PhantomData)
+    fn detach(self) -> (Self::Left, Self::Right) {
+        (self.0, DetachedRoot(PhantomData))
     }
 }
 
 impl<Prev, Index> Detach for AT<Prev, Index> where
     Prev: Detach
 {
-    type Output = AT<Prev::Output, Index>;
+    type Left = Prev::Left;
+    type Right = AT<Prev::Right, Index>;
 
-    fn detach(self) -> Self::Output {
-        AT { prev: self.prev.detach(), index: self.index }
+    fn detach(self) -> (Self::Left, Self::Right) {
+        let (left, right) = self.prev.detach();
+
+        (left, AT { prev: right, index: self.index })
     }
 }
 
@@ -88,11 +93,11 @@ pub trait Attach<CPS: Cps> {
 
 
 impl<CPS: Cps> Attach<CPS> for DetachedRoot<CPS::View> {
-    type Output = AttachedRoot<CPS>;
+    type Output = DetachPoint<CPS>;
     type View = CPS::View;
 
     fn attach(self, cps: CPS) -> Self::Output {
-        AttachedRoot(cps)
+        DetachPoint(cps)
     }
 }
 

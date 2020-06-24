@@ -11,17 +11,10 @@ use crate::batch::{ new_batch_rt, FnBoxRt };
 mod detach; // detached paths
 
 #[cfg(feature="detach")]
-use detach::{ AttachedRoot, DetachedRoot, Detach };
+use detach::{ DetachPoint, DetachedRoot, Detach };
 
 #[cfg(feature="detach")]
 pub use detach::{ Attach };
-
-#[cfg(not(feature="detach"))]
-type AttachedRoot<T> = T;
-
-#[cfg(not(feature="detach"))]
-#[allow(non_snake_case)]
-fn AttachedRoot<T>(t: T) -> T { t }
 
 
 /// A smart access protocol.
@@ -96,14 +89,10 @@ pub trait Cps: Sized {
     /// &#8220;Moves in the direction&#8221; of the provided index.
     ///
     /// __Not intended for overriding.__
-    ///
-    /// _If you see scary `AttachedRoot<Self>` as a part of the return type 
-    /// then you have enabled the `detach` feature. Without `detach` that part 
-    /// is simply `Self`._
-    fn at<Index>(self, i: Index) -> AT<AttachedRoot<Self>, Index> where
+    fn at<Index>(self, i: Index) -> AT<Self, Index> where
         Self::View: At<Index>
     {
-        AT { prev: AttachedRoot(self), index: i } 
+        AT { prev: self, index: i } 
     }
 
     #[cfg(feature="batch_ct")]
@@ -138,8 +127,6 @@ pub trait Cps: Sized {
         path.attach(self)
     }
 
-    /* WIP (may be changed or completely deleted
-
     #[cfg(feature="detach")]
     /// Creates a new detach point.
     ///
@@ -157,26 +144,20 @@ pub trait Cps: Sized {
     /// let mut foo = Some(Some(1));
     /// let mut bar = Some(2);
     ///
-    /// //                        the detached part
-    /// //                            /-----\
-    /// let path = foo.at(()).freeze().at(()).detach();
-    /// bar.attach(path).replace(3);
+    /// //                              the detached part
+    /// //                                  /------\
+    /// let (left, right) = foo.at(()).cut().at(()).detach();
     ///
+    /// assert!(bar.attach(right).replace(3) == Some(2));
     /// assert!(bar == Some(3));
+    ///
+    /// assert!(left.at(()).replace(4) == Some(1));
+    /// assert!(foo == Some(Some(4)));
     /// ```
-    /// 
-    /// A more interesting example:
-    ///
-    ///
-    ///
-    /// ### Note
-    ///
-    /// The [`at`](#tymethod.at) method implicitly creates a detach point.
-    fn freeze(self) -> AttachedRoot<Self>
+    fn cut(self) -> DetachPoint<Self>
     {
-        AttachedRoot(self)
+        DetachPoint(self)
     } 
-    */
 }
 
 
@@ -280,11 +261,11 @@ impl<T,I> From<AT<T,I>> for (T,I) {
 
 
 #[cfg(feature="detach")]
-impl<T, I, Detached> AT<T, I> where
-    AT<T, I>: Detach<Output=Detached>
+impl<T, I, Left, Right> AT<T, I> where
+    AT<T, I>: Detach<Left=Left, Right=Right>
 {
 
-/// Detaches the path.
+/// Detaches the path starting from the [detach point](trait.Cps.html#method.cut).
 ///
 /// _Present only on `detach`._
 ///
@@ -296,7 +277,7 @@ impl<T, I, Detached> AT<T, I> where
 /// let mut foo = vec![vec![vec![0]]];
 /// let mut bar = vec![vec![vec![0]]];
 ///
-/// let detached = foo.at(0).at(0).at(0).detach();
+/// let (_, detached) = foo.cut().at(0).at(0).at(0).detach();
 ///
 /// // Detached paths are cloneable (if indices are cloneable)
 /// let the_same_path = detached.clone();
@@ -309,27 +290,12 @@ impl<T, I, Detached> AT<T, I> where
 /// assert!(foo == vec![vec![vec![2]]]);
 /// assert!(bar == vec![vec![vec![1]]]);
 /// 
-/// let path = bar.at(0).at(0).detach().at(0);
-/// bar.attach(path).replace(3);
+/// let (_, path) = bar.cut().at(0).at(0).detach();
+/// bar.attach(path.at(0)).replace(3);
 /// assert!(bar == vec![vec![vec![3]]]);
 /// ```
-    pub fn detach(self) -> Detached {
+    pub fn detach(self) -> (Left, Right) {
         <Self as Detach>::detach(self)
-    }
-}
-
-
-#[cfg(feature="detach")]
-impl<T,I> AT<T, I> where
-{
-    /// A helper `at` method overriding the `Cps` default.
-    ///
-    /// _Present only on `detach`._
-    pub fn at<Index,V>(self, i: Index) -> AT<Self, Index> where
-        Self: Cps<View=V>,
-        V: At<Index> + ?Sized,
-    {
-        AT { prev: self, index: i } 
     }
 }
 
