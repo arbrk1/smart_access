@@ -55,10 +55,16 @@ smart_access = { version = "0.4", default-features = false, features = ["std_col
 smart_access = { version = "0.4", default-features = false, features = ["batch_ct", "detach"] }
 ```
 
+### Beware
+
+The `detach` feature as currently implemented has serious limitations.
+
+This feature is being currently reworked so try not to rely on it.
+
 
 ## Versions
 
-* `0.4.1`: WIP
+* `0.4.1`: Fixed some serious bugs in the `detach`-enabled version of the crate.
 * `0.4.0`: Public API for using access batches as function inputs/outputs.
 * `0.3.0`: Public API for using detached accessors as function inputs/outputs.
 * `0.2.2`: New feature `detach` allows one to detach an accessor from the source of the data accessed.

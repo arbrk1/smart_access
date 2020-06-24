@@ -137,6 +137,46 @@ pub trait Cps: Sized {
     {
         path.attach(self)
     }
+
+    /* WIP (may be changed or completely deleted
+
+    #[cfg(feature="detach")]
+    /// Creates a new detach point.
+    ///
+    /// __Not intended for overriding.__
+    ///
+    /// _Present only on `detach`._
+    ///
+    /// ### Usage example
+    ///
+    /// The [`.detach()`](struct.AT.html#method.detach) method 
+    /// detaches a part beginning at the closest detach point:
+    ///
+    /// ```
+    /// # use smart_access::Cps;
+    /// let mut foo = Some(Some(1));
+    /// let mut bar = Some(2);
+    ///
+    /// //                        the detached part
+    /// //                            /-----\
+    /// let path = foo.at(()).freeze().at(()).detach();
+    /// bar.attach(path).replace(3);
+    ///
+    /// assert!(bar == Some(3));
+    /// ```
+    /// 
+    /// A more interesting example:
+    ///
+    ///
+    ///
+    /// ### Note
+    ///
+    /// The [`at`](#tymethod.at) method implicitly creates a detach point.
+    fn freeze(self) -> AttachedRoot<Self>
+    {
+        AttachedRoot(self)
+    } 
+    */
 }
 
 
@@ -153,8 +193,21 @@ pub trait Cps: Sized {
 /// and [`Cps<View=T>`](trait.Cps.html) bounds on their parameters.
 ///
 /// Enabling `detach` feature allows one to [detach](#method.detach) `AT`s from their roots. 
+///
+/// Without this feature only a single component can be detached:
+///
+/// ```
+/// use smart_access::Cps;
+///
+/// let mut foo = vec![vec![1,2], vec![3,4]];
+///
+/// let (foo_i, j) = foo.at(0).at(0).into();
+/// assert!(foo_i.at(1).replace(5) == Some(2));
+/// ```
 /// 
 /// ### Note
+///
+/// _Relevant only with the `detach` feature enabled._
 ///
 /// If you pass a detached path to a function then you should use 
 /// an [`Attach<CPS, View=V>`](trait.Attach.html) bound 
@@ -180,12 +233,49 @@ pub trait Cps: Sized {
 /// # #[cfg(not(feature="detach"))] fn test() {}
 /// # test();
 /// ```
+/* WIP  ///
+/// But sometimes an explicit `AT` can be useful: 
+///
+/// ```
+/// # #[cfg(feature="detach")] fn test() {
+/// use smart_access::*;
+///
+/// fn get_ij<CPS, V>(a_i: AT<CPS, usize>, j: usize) -> impl Attach<CPS> where 
+///     CPS: Cps,
+///     CPS::View: At<usize, View=V>,
+///     V: ?Sized + At<usize>
+///     
+/// {
+///     let (a,i) = a_i.into();
+///
+///     a.at(i).at(j).detach()
+/// }
+///
+/// let mut foo = vec![vec![1,2], vec![3,4]];
+/// let path = get_ij(foo.at(1), 0);
+/// 
+/// //assert!(foo.freeze().attach(path).replace(5) == Some(3));
+/// # }
+/// # #[cfg(not(feature="detach"))] fn test() {}
+/// # test();
+/// ```
+*/
 #[must_use]
 #[cfg_attr(feature="detach", derive(Clone))]
 #[derive(Debug)]
 pub struct AT<T, Index> { 
     prev: T, 
     index: Index,
+}
+
+/// `AT` can be broken apart to detach a single path component.
+///
+/// A more general attach/detach framework is accessible 
+/// through the `detach` feature.
+impl<T,I> From<AT<T,I>> for (T,I) {
+    fn from(at: AT<T,I>) -> Self {
+        (at.prev, at.index)
+    }
 }
 
 
@@ -229,15 +319,15 @@ impl<T, I, Detached> AT<T, I> where
 }
 
 
-/// A helper `at` method overriding the `Cps` default.
-///
-/// _Present only on `detach`._
 #[cfg(feature="detach")]
 impl<T,I> AT<T, I> where
 {
+    /// A helper `at` method overriding the `Cps` default.
+    ///
+    /// _Present only on `detach`._
     pub fn at<Index,V>(self, i: Index) -> AT<Self, Index> where
         Self: Cps<View=V>,
-        V: At<Index>,
+        V: At<Index> + ?Sized,
     {
         AT { prev: self, index: i } 
     }

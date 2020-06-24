@@ -76,6 +76,9 @@ impl<Prev, Index> Detach for AT<Prev, Index> where
 /// Can be created by a [`detached_at`](fn.detached_at.html) function.
 ///
 /// See examples [here](struct.AT.html) and [here](fn.detached_at.html).
+///
+/// __Warning!__ In the next version of the crate this trait 
+/// very likely will become `Attach<View>`.
 pub trait Attach<CPS: Cps> {
     type Output: Cps<View=Self::View>;
     type View: ?Sized;
@@ -93,7 +96,7 @@ impl<CPS: Cps> Attach<CPS> for DetachedRoot<CPS::View> {
     }
 }
 
-impl<CPS: Cps, Prev, Index, V> Attach<CPS> for AT<Prev, Index> where
+impl<CPS: Cps, Prev, Index, V: ?Sized> Attach<CPS> for AT<Prev, Index> where
     Prev: Attach<CPS>,
     Prev::View: At<Index, View=V>,
 {
