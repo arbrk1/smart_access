@@ -375,7 +375,9 @@ impl<T, I, Left, Right> AT<T, I> where
 /// assert!(mat.at( (1,1) ).replace(0.) == Some(4.));
 /// ```
 #[cfg(feature="detach")]
-pub fn detached_at<View: ?Sized, I>(i: I) -> AT<DetachedRoot<View>, I> {
+pub fn detached_at<View: ?Sized, I>(i: I) -> AT<DetachedRoot<View>, I> where
+    View: At<I>
+{
     AT {
         prev: DetachedRoot::new(),
         index: i,
