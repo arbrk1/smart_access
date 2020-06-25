@@ -603,5 +603,5 @@ pub use batch::{ BatchCt };
 pub use batch::{ BatchRt };
 
 #[cfg(feature="detach")]
-pub use at::{ Attach, detached_at };
+pub use at::{ DetachedPath, detached_at };
 

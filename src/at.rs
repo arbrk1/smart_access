@@ -14,7 +14,7 @@ mod detach; // detached paths
 use detach::{ DetachedRoot };
 
 #[cfg(feature="detach")]
-pub use detach::{ Attach };
+pub use detach::{ DetachedPath };
 
 
 
@@ -122,10 +122,10 @@ pub trait Cps: Sized {
     /// __Not intended for overriding.__
     ///
     /// _Present only on `detach`._
-    fn attach<Path>(self, path: Path) -> AT<Self, Path::List> where
-        Path: Attach<ToView=Self::View>
+    fn attach<List>(self, path: DetachedPath<Self::View, List>) 
+        -> AT<Self, List>
     {
-        path.attach_to(self)
+        AT { cps: self, list: path.list }
     }
 
     #[cfg(feature="detach")]
@@ -210,17 +210,18 @@ pub trait Cps: Sized {
 ///
 /// ```
 /// # #[cfg(feature="detach")] fn test() {
-/// # use smart_access::{Cps, Attach, AT, detached_at};
-/// fn replace_at<CPS, Path, V>(cps: CPS, path: Path, x: V) -> Option<V> where
-///     CPS: Cps,
-///     Path: Attach<ToView=CPS::View, View=V>,
+/// # use smart_access::{AT, Cps, DetachedPath, detached_at};
+/// fn replace_at<CPS: Cps, Path, V>(
+///     cps: CPS, path: DetachedPath<CPS::View, Path>, x: V) 
+///     -> Option<V> where
+///     AT<CPS, Path>: Cps<View=V>
 /// {
-///     let () = cps.attach(path);/*.replace(x)*/
+///     cps.attach(path).replace(x)
 /// }
 ///
 /// let mut vec = vec![1,2,3];
 ///
-/// assert!(replace_at(&mut vec, detached_at(0), 4) == Some(1));
+/// assert!(replace_at::<_, ((), _), _>(&mut vec, detached_at(0), 4) == Some(1));
 /// assert!(vec == vec![4,2,3]);
 /// # }
 /// # #[cfg(not(feature="detach"))] fn test() {}
@@ -276,6 +277,19 @@ impl<CPS, List> AT<CPS, List> {
 }
 
 
+/// A [detach point](trait.Cps.html#method.cut).
+///
+/// Even without `detach` it is used to stop trait recursion.
+impl<CPS: Cps> Cps for AT<CPS, ()> {
+    type View = CPS::View;
+    
+    fn access<R, F>(self, f: F) -> Option<R> where 
+        F: FnOnce(&mut Self::View) -> R 
+    {
+        self.cps.access(f)
+    }
+}
+
 
 /// `access` returns `Some` / `None` according to rules described [here](trait.At.hmtl)
 impl<CPS: Cps, Prev, Index, View: ?Sized> Cps for AT<CPS, (Prev, Index)> where
@@ -295,18 +309,6 @@ impl<CPS: Cps, Prev, Index, View: ?Sized> Cps for AT<CPS, (Prev, Index)> where
 }
 
 
-/// A [detach point](trait.Cps.html#method.cut).
-///
-/// Even without `detach` it is used to stop trait recursion.
-impl<CPS: Cps> Cps for AT<CPS, ()> {
-    type View = CPS::View;
-    
-    fn access<R, F>(self, f: F) -> Option<R> where 
-        F: FnOnce(&mut Self::View) -> R 
-    {
-        self.cps.access(f)
-    }
-}
 
 
 /// `AT` can be broken apart to detach a single path component.
@@ -393,11 +395,11 @@ impl<CPS: Cps, List> AT<CPS, List> {
 /// A more convoluted example: a functional index combinator.
 ///
 /// ```
-/// use smart_access::{Cps, Attach};
+/// use smart_access::{Cps, DetachedPath};
 ///
 /// type Mat = Vec<Vec<f64>>;
 ///
-/// fn mat_index<'a>(i: usize, j: usize) -> impl Attach<ToView=Mat, View=f64> {
+/// fn mat_index<'a>(i: usize, j: usize) -> DetachedPath<Mat, (((), usize), usize)> {
 ///     smart_access::detached_at(i).at(j)
 /// }
 ///
