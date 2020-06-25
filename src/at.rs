@@ -11,10 +11,11 @@ use crate::batch::{ new_batch_rt, FnBoxRt };
 mod detach; // detached paths
 
 #[cfg(feature="detach")]
-use detach::{ DetachPoint, DetachedRoot, Detach };
+use detach::{ DetachedRoot };
 
 #[cfg(feature="detach")]
 pub use detach::{ Attach };
+
 
 
 /// A smart access protocol.
@@ -89,10 +90,10 @@ pub trait Cps: Sized {
     /// &#8220;Moves in the direction&#8221; of the provided index.
     ///
     /// __Not intended for overriding.__
-    fn at<Index>(self, i: Index) -> AT<Self, Index> where
+    fn at<Index>(self, i: Index) -> AT<Self, ((), Index)> where
         Self::View: At<Index>
     {
-        AT { prev: self, index: i } 
+        AT { cps: self, list: ((), i) } 
     }
 
     #[cfg(feature="batch_ct")]
@@ -121,10 +122,10 @@ pub trait Cps: Sized {
     /// __Not intended for overriding.__
     ///
     /// _Present only on `detach`._
-    fn attach<Path>(self, path: Path) -> Path::Output where
-        Path: Attach<Self>
+    fn attach<Path>(self, path: Path) -> AT<Self, Path::List> where
+        Path: Attach<ToView=Self::View>
     {
-        path.attach(self)
+        path.attach_to(self)
     }
 
     #[cfg(feature="detach")]
@@ -154,9 +155,9 @@ pub trait Cps: Sized {
     /// assert!(left.at(()).replace(4) == Some(1));
     /// assert!(foo == Some(Some(4)));
     /// ```
-    fn cut(self) -> DetachPoint<Self>
+    fn cut(self) -> AT<Self, ()>
     {
-        DetachPoint(self)
+        AT { cps: self, list: () }
     } 
 }
 
@@ -164,10 +165,21 @@ pub trait Cps: Sized {
 
 /// A &#8220;reference&#8221; to some &#8220;location&#8221;.
 ///
-/// With default [`Cps`](trait.Cps.html) implementors every `AT` is 
-/// guaranteed to be a list of &#8220;path parts&#8221; with type
+/// With default [`Cps`](trait.Cps.html) implementations
+/// (and with the `detach` feature disabled) every `AT` is 
+/// usually a &#8220;path component&#8221; list of type
 ///
-/// `AT<..AT<AT<AT<&mut root, I1>,I2>,I3>..In>`
+/// `AT<&mut root, (..((((), I1), I2), I3) .. In)>`
+///
+/// But beware! Starting with version `0.5` there is a possibility to create
+/// multilevel hierarchies like
+///
+/// `AT<AT<&mut root, ((), I1)>, ((), I2)>`
+///
+/// by using the [`at` of `Cps`](trait.Cps.html#method.at) instead of 
+/// its [`AT`-override](#method.at).
+/// 
+/// Moreover, the `detach` feature is now based on such nonlinear structures.
 ///
 /// Though `AT` is exposed, it's strongly recommended to use
 /// [`impl Cps<View=T>`](trait.Cps.html) as a return type of your functions 
@@ -198,12 +210,12 @@ pub trait Cps: Sized {
 ///
 /// ```
 /// # #[cfg(feature="detach")] fn test() {
-/// # use smart_access::{Cps, Attach, detached_at};
+/// # use smart_access::{Cps, Attach, AT, detached_at};
 /// fn replace_at<CPS, Path, V>(cps: CPS, path: Path, x: V) -> Option<V> where
 ///     CPS: Cps,
-///     Path: Attach<CPS,View=V>
+///     Path: Attach<ToView=CPS::View, View=V>,
 /// {
-///     cps.attach(path).replace(x)
+///     let () = cps.attach(path);/*.replace(x)*/
 /// }
 ///
 /// let mut vec = vec![1,2,3];
@@ -244,26 +256,75 @@ pub trait Cps: Sized {
 #[must_use]
 #[cfg_attr(feature="detach", derive(Clone))]
 #[derive(Debug)]
-pub struct AT<T, Index> { 
-    prev: T, 
-    index: Index,
+pub struct AT<CPS, List> { 
+    cps: CPS, 
+    list: List,
 }
+
+
+
+impl<CPS, List> AT<CPS, List> {
+    /// Override for [`at` of `Cps`](trait.Cps.html#method.at).
+    ///
+    /// Preserves flat structure.
+    pub fn at<Index, View: ?Sized>(self, i: Index) -> AT<CPS, (List, Index)> where
+        AT<CPS, List>: Cps<View=View>,
+        View: At<Index>
+    {
+        AT { cps: self.cps, list: (self.list, i) } 
+    }
+}
+
+
+
+/// `access` returns `Some` / `None` according to rules described [here](trait.At.hmtl)
+impl<CPS: Cps, Prev, Index, View: ?Sized> Cps for AT<CPS, (Prev, Index)> where
+    AT<CPS, Prev>: Cps<View=View>,
+    View: At<Index>
+{
+    type View = View::View;
+    
+    fn access<R, F>(self, f: F) -> Option<R> where 
+        F: FnOnce(&mut Self::View) -> R 
+    {
+        let (prev, index) = self.list;
+        let at = AT { cps: self.cps, list: prev };
+
+        at.access(|v| { v.access_at(index, f) }).flatten()
+    }
+}
+
+
+/// A [detach point](trait.Cps.html#method.cut).
+///
+/// Even without `detach` it is used to stop trait recursion.
+impl<CPS: Cps> Cps for AT<CPS, ()> {
+    type View = CPS::View;
+    
+    fn access<R, F>(self, f: F) -> Option<R> where 
+        F: FnOnce(&mut Self::View) -> R 
+    {
+        self.cps.access(f)
+    }
+}
+
 
 /// `AT` can be broken apart to detach a single path component.
 ///
 /// A more general attach/detach framework is accessible 
 /// through the `detach` feature.
-impl<T,I> From<AT<T,I>> for (T,I) {
-    fn from(at: AT<T,I>) -> Self {
-        (at.prev, at.index)
+impl<CPS,Prev,I> From<AT<CPS,(Prev,I)>> for (AT<CPS,Prev>,I) 
+{
+    fn from(at: AT<CPS,(Prev,I)>) -> Self {
+        let (prev, index) = at.list;
+
+        (AT { cps: at.cps, list: prev}, index)
     }
 }
 
 
 #[cfg(feature="detach")]
-impl<T, I, Left, Right> AT<T, I> where
-    AT<T, I>: Detach<Left=Left, Right=Right>
-{
+impl<CPS: Cps, List> AT<CPS, List> {
 
 /// Detaches the path starting from the [detach point](trait.Cps.html#method.cut).
 ///
@@ -277,7 +338,7 @@ impl<T, I, Left, Right> AT<T, I> where
 /// let mut foo = vec![vec![vec![0]]];
 /// let mut bar = vec![vec![vec![0]]];
 ///
-/// let (_, detached) = foo.cut().at(0).at(0).at(0).detach();
+/// let (_, detached) = foo.at(0).at(0).at(0).detach();
 ///
 /// // Detached paths are cloneable (if indices are cloneable)
 /// let the_same_path = detached.clone();
@@ -290,12 +351,12 @@ impl<T, I, Left, Right> AT<T, I> where
 /// assert!(foo == vec![vec![vec![2]]]);
 /// assert!(bar == vec![vec![vec![1]]]);
 /// 
-/// let (_, path) = bar.cut().at(0).at(0).detach();
+/// let (_, path) = bar.at(0).at(0).detach();
 /// bar.attach(path.at(0)).replace(3);
 /// assert!(bar == vec![vec![vec![3]]]);
 /// ```
-    pub fn detach(self) -> (Left, Right) {
-        <Self as Detach>::detach(self)
+    pub fn detach(self) -> (CPS, AT<DetachedRoot<CPS::View>, List>) {
+        (self.cps, AT { cps: DetachedRoot::new(), list: self.list })
     }
 }
 
@@ -336,7 +397,7 @@ impl<T, I, Left, Right> AT<T, I> where
 ///
 /// type Mat = Vec<Vec<f64>>;
 ///
-/// fn mat_index<'a>(i: usize, j: usize) -> impl Attach<&'a mut Mat, View=f64> {
+/// fn mat_index<'a>(i: usize, j: usize) -> impl Attach<ToView=Mat, View=f64> {
 ///     smart_access::detached_at(i).at(j)
 /// }
 ///
@@ -375,12 +436,12 @@ impl<T, I, Left, Right> AT<T, I> where
 /// assert!(mat.at( (1,1) ).replace(0.) == Some(4.));
 /// ```
 #[cfg(feature="detach")]
-pub fn detached_at<View: ?Sized, I>(i: I) -> AT<DetachedRoot<View>, I> where
+pub fn detached_at<View: ?Sized, I>(i: I) -> AT<DetachedRoot<View>, ((), I)> where
     View: At<I>
 {
     AT {
-        prev: DetachedRoot::new(),
-        index: i,
+        cps: DetachedRoot::new(),
+        list: ((), i),
     }
 }
 
@@ -397,21 +458,5 @@ impl<T: ?Sized> Cps for &mut T {
     }
 }
 
-
-/// `access` returns `Some` / `None` according to rules described [here](trait.At.hmtl)
-impl<T, V: ?Sized, Index> Cps for AT<T, Index> where
-    T: Cps<View=V>,
-    V: At<Index>
-{
-    type View = V::View;
-    
-    fn access<R, F>(self, f: F) -> Option<R> where 
-        F: FnOnce(&mut Self::View) -> R 
-    {
-        let index = self.index;
-
-        self.prev.access(|v| { v.access_at(index, f) }).flatten()
-    }
-}
 
 

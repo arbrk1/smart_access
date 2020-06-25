@@ -83,7 +83,7 @@ fn test_detach() {
     let mut foo = Some(Some(Some(0)));
     let mut bar = Some(Some(Some(0)));
 
-    let (_, detached) = foo.cut().at(()).at(()).at(()).detach();
+    let (_, detached) = foo.at(()).at(()).at(()).detach();
     let the_same_path = detached.clone();
 
     bar.attach(the_same_path).replace(1);
@@ -94,7 +94,7 @@ fn test_detach() {
     assert!(foo == Some(Some(Some(2))));
     assert!(bar == Some(Some(Some(1))));
 
-    let (_, path) = bar.cut().at(()).at(()).detach();
+    let (_, path) = bar.at(()).at(()).detach();
     bar.attach(path.at(())).replace(3);
     assert!(bar == Some(Some(Some(3))));
 }

@@ -14,22 +14,6 @@ impl<V: ?Sized> DetachedRoot<V> {
 }
 
 
-/// A helper for attached paths.
-///
-/// Forwards the access query to the wrapped type.
-impl<T> Cps for DetachPoint<T> where
-    T: Cps
-{    
-    type View = T::View;
-    
-    fn access<R, F>(self, f: F) -> Option<R> where
-        F: FnOnce(&mut Self::View) -> R
-    {
-        self.0.access(f)
-    }
-}
-
-
 /// A helper for detached paths.
 ///
 /// `access` returns `None`.
@@ -43,36 +27,6 @@ impl<V: ?Sized> Cps for DetachedRoot<V> {
     }
 }
 
-#[must_use]
-pub trait Detach {
-    type Left;
-    type Right;
-
-    fn detach(self) -> (Self::Left, Self::Right);
-}
-
-impl<CPS: Cps> Detach for DetachPoint<CPS> {
-    type Left = CPS;
-    type Right = DetachedRoot<CPS::View>;
-
-    fn detach(self) -> (Self::Left, Self::Right) {
-        (self.0, DetachedRoot(PhantomData))
-    }
-}
-
-impl<Prev, Index> Detach for AT<Prev, Index> where
-    Prev: Detach
-{
-    type Left = Prev::Left;
-    type Right = AT<Prev::Right, Index>;
-
-    fn detach(self) -> (Self::Left, Self::Right) {
-        let (left, right) = self.prev.detach();
-
-        (left, AT { prev: right, index: self.index })
-    }
-}
-
 
 /// A detached path. __Requires `detach` feature.__
 ///
@@ -81,9 +35,50 @@ impl<Prev, Index> Detach for AT<Prev, Index> where
 /// Can be created by a [`detached_at`](fn.detached_at.html) function.
 ///
 /// See examples [here](struct.AT.html) and [here](fn.detached_at.html).
-///
-/// __Warning!__ In the next version of the crate this trait 
-/// very likely will become `Attach<View>`.
+pub trait Attach {
+    type List;
+
+    type ToView: ?Sized;
+    type View: ?Sized;
+
+    fn attach_to<CPS: Cps<View=Self::ToView>>(self, cps: CPS) -> AT<CPS, Self::List>;
+}
+
+
+impl<ToView: ?Sized, List, View: ?Sized> Attach for 
+AT<DetachedRoot<ToView>, List> where
+    Self: Cps<View=View>
+{
+    type List = List;
+
+    type ToView = ToView;
+    type View = View;
+
+    fn attach_to<CPS: Cps<View=ToView>>(self, cps: CPS) -> AT<CPS, Self::List>
+    {
+        AT { cps: cps, list: self.list }
+    }
+}
+
+/* ?????????????
+trait Transform<View: ?Sized> {
+    type View: ?Sized;
+}
+
+impl<View: ?Sized> Transform<View> for () {
+    type View = View;
+}
+
+impl<Prev, Index, U: ?Sized, V: ?Sized> Transform<U> for (Prev, Index) where
+    Prev: Transform<U>,
+    Prev::View: At<Index, View=V>
+{
+    type View = V;
+}*/
+
+
+
+/*
 pub trait Attach<CPS: Cps> {
     type Output: Cps<View=Self::View>;
     type View: ?Sized;
@@ -111,6 +106,5 @@ impl<CPS: Cps, Prev, Index, V: ?Sized> Attach<CPS> for AT<Prev, Index> where
     fn attach(self, cps: CPS) -> Self::Output {
         AT { prev: self.prev.attach(cps), index: self.index }
     }
-}
-
+}*/
 
