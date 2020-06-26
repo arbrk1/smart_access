@@ -31,3 +31,29 @@ impl<V: ?Sized> Cps for DetachedRoot<V> {
 ///
 /// See examples [here](struct.AT.html) and [here](fn.detached_at.html).
 pub type DetachedPath<View, List> = AT<DetachedRoot<View>, List>;
+
+
+pub trait Attach: Sized {
+    type ToView: ?Sized;
+    type List: AtView<Self::ToView, View=Self::View>;
+    type View: ?Sized;
+
+    fn attach_to<CPS>(self, cps: CPS) -> AT<CPS, Self::List> where
+        CPS: Cps<View=Self::ToView>;
+}
+
+impl<ToView: ?Sized, List> Attach for DetachedPath<ToView, List> where
+    List: AtView<ToView>
+{
+    type ToView = ToView;
+    type List = List;
+    type View = List::View;
+
+    fn attach_to<CPS>(self, cps: CPS) -> AT<CPS, Self::List> where
+        CPS: Cps<View=Self::ToView>
+    {
+        AT { cps: cps, list: self.list }
+    }
+}
+
+

@@ -14,7 +14,7 @@ mod detach; // detached paths
 use detach::{ DetachedRoot };
 
 #[cfg(feature="detach")]
-pub use detach::{ DetachedPath };
+pub use detach::{ Attach, DetachedPath };
 
 
 
@@ -122,11 +122,17 @@ pub trait Cps: Sized {
     /// __Not intended for overriding.__
     ///
     /// _Present only on `detach`._
-    fn attach<List>(self, path: DetachedPath<Self::View, List>) 
+    fn attach<Path, V: ?Sized>(self, path: Path) -> AT<Self, Path::List> where
+        Path: Attach<ToView=Self::View, View=V>,
+        Path::List: AtView<Self::View, View=V>,
+    {
+        path.attach_to(self)
+    }
+    /*fn attach<List>(self, path: DetachedPath<Self::View, List>) 
         -> AT<Self, List>
     {
         AT { cps: self, list: path.list }
-    }
+    }*/
 
     #[cfg(feature="detach")]
     /// Creates a new detach point.
@@ -216,18 +222,18 @@ impl<T: ?Sized> Cps for &mut T {
 /// _Relevant only with the `detach` feature enabled._
 ///
 /// If you pass a detached path to a function then you should use 
-/// an [`Attach<CPS, View=V>`](trait.Attach.html) bound 
-/// instead of a [`Cps<View=V>`](trait.Cps.html) bound.
+/// a [`Path: Attach<ToView=CPS::View, View=V>`](trait.Attach.html) bound 
+/// paired with a [`Path::List: AtView<CPS::View, View=V>`](trait.AtView.html) 
+/// bound instead of a [`Cps<View=V>`](trait.Cps.html) bound.
 ///
 /// I.e.
 ///
 /// ```
 /// # #[cfg(feature="detach")] fn test() {
-/// # use smart_access::{AT, Cps, DetachedPath, detached_at};
-/// fn replace_at<CPS: Cps, Path, V>(
-///     cps: CPS, path: DetachedPath<CPS::View, Path>, x: V) 
-///     -> Option<V> where
-///     AT<CPS, Path>: Cps<View=V>
+/// # use smart_access::{AT, Cps, Attach, AtView, detached_at};
+/// fn replace_at<CPS: Cps, Path, V>(cps: CPS, path: Path, x: V) -> Option<V> where
+///     Path: Attach<ToView=CPS::View, View=V>,
+///     Path::List: AtView<CPS::View, View=V>
 /// {
 ///     cps.attach(path).replace(x)
 /// }
@@ -240,33 +246,35 @@ impl<T: ?Sized> Cps for &mut T {
 /// # #[cfg(not(feature="detach"))] fn test() {}
 /// # test();
 /// ```
-/* WIP  ///
+///
 /// But sometimes an explicit `AT` can be useful: 
 ///
 /// ```
 /// # #[cfg(feature="detach")] fn test() {
 /// use smart_access::*;
 ///
-/// fn get_ij<CPS, V>(a_i: AT<CPS, usize>, j: usize) -> impl Attach<CPS> where 
+/// fn get_ij<CPS: Cps, U, V>(a_i: AT<CPS, ((), usize)>, j: usize) 
+///     -> impl Attach<ToView=CPS::View, View=V> where 
 ///     CPS: Cps,
-///     CPS::View: At<usize, View=V>,
-///     V: ?Sized + At<usize>
-///     
+///     CPS::View: At<usize, View=U>,
+///     U: At<usize, View=V> + ?Sized,
+///     V: ?Sized
 /// {
 ///     let (a,i) = a_i.into();
+///     let (_, path) = a.at(i).at(j).detach();
 ///
-///     a.at(i).at(j).detach()
+///     path
 /// }
 ///
 /// let mut foo = vec![vec![1,2], vec![3,4]];
 /// let path = get_ij(foo.at(1), 0);
 /// 
-/// //assert!(foo.freeze().attach(path).replace(5) == Some(3));
+/// path.attach_to(&mut foo);
+/// //assert!(foo.attach(path).replace(5) == Some(3));
 /// # }
 /// # #[cfg(not(feature="detach"))] fn test() {}
 /// # test();
 /// ```
-*/
 #[must_use]
 #[cfg_attr(feature="detach", derive(Clone))]
 #[derive(Debug)]
@@ -277,7 +285,7 @@ pub struct AT<CPS, List> {
 
 /// `access` returns `Some` / `None` according to the rules described [here](trait.At.hmtl)
 impl<CPS: Cps, Path> Cps for AT<CPS, Path> where
-    Path: ATView<CPS>
+    Path: AtView<CPS::View>
 {
     type View = Path::View;
     
@@ -477,33 +485,45 @@ impl<CPS: Cps, Prev, Index, View: ?Sized> Cps for AT<CPS, (Prev, Index)> where
 }*/
 
 
-// A workaround for the inability of the Rust compiler to infer types 
-// in presence of flexible recurrent contexts.
-pub trait ATView<CPS>: Sized {
+/// A trait which is usually needed alongside [`Attach`](trait.Attach.html) bounds.
+///
+/// Essentially it's a type-level function mapping the `View` type of a 
+/// `Cps`-bounded value `x` and a path type of the form `(..((), I1), .. In)`
+/// to the `View` type of the value
+///
+/// `x.at(i1) .. .at(in)`
+/// 
+/// Technically it's a workaround for the inability of the 
+/// Rust compiler to reliably infer types in presence of 
+/// flexible (as in Haskell's `FlexibleContexts`) recurrent contexts.
+pub trait AtView<View: ?Sized>: Sized {
     type View: ?Sized;
 
-    fn give_access<R, F>(self, cps: CPS, f: F) -> Option<R> where
+    fn give_access<CPS, R, F>(self, cps: CPS, f: F) -> Option<R> where
+        CPS: Cps<View=View>,
         F: FnOnce(&mut Self::View) -> R;
 }
 
 
-impl<CPS: Cps> ATView<CPS> for () {
-    type View = CPS::View;
+impl<View: ?Sized> AtView<View> for () {
+    type View = View;
     
-    fn give_access<R, F>(self, cps: CPS, f: F) -> Option<R> where
+    fn give_access<CPS, R, F>(self, cps: CPS, f: F) -> Option<R> where
+        CPS: Cps<View=View>,
         F: FnOnce(&mut Self::View) -> R
     {
         cps.access(f)
     }
 }
 
-impl<CPS: Cps, Prev, Index> ATView<CPS> for (Prev, Index) where
-    Prev: ATView<CPS>,
+impl<View: ?Sized, Prev, Index> AtView<View> for (Prev, Index) where
+    Prev: AtView<View>,
     Prev::View: At<Index>
 {
     type View = <Prev::View as At<Index>>::View;
     
-    fn give_access<R, F>(self, cps: CPS, f: F) -> Option<R> where
+    fn give_access<CPS, R, F>(self, cps: CPS, f: F) -> Option<R> where
+        CPS: Cps<View=View>,
         F: FnOnce(&mut Self::View) -> R
     {
         let (prev, index) = self;
