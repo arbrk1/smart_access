@@ -34,7 +34,6 @@ pub type DetachedPath<View, List> = AT<DetachedRoot<View>, List>;
 ///
 /// See examples [here](struct.AT.html) and [here](fn.detached_at.html).
 pub trait Attach<View: ?Sized>: Sized {
-    //type ToView: ?Sized;
     type List: AtView<View, View=Self::View>;
     type View: ?Sized;
 
@@ -45,7 +44,6 @@ pub trait Attach<View: ?Sized>: Sized {
 impl<ToView: ?Sized, List> Attach<ToView> for DetachedPath<ToView, List> where
     List: AtView<ToView>
 {
-    //type ToView = ToView;
     type List = List;
     type View = List::View;
 

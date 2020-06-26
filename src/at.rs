@@ -14,7 +14,7 @@ mod detach; // detached paths
 use detach::{ DetachedRoot };
 
 #[cfg(feature="detach")]
-pub use detach::{ Attach, DetachedPath };
+pub use detach::{ Attach };
 
 
 
@@ -124,15 +124,9 @@ pub trait Cps: Sized {
     /// _Present only on `detach`._
     fn attach<Path, V: ?Sized>(self, path: Path) -> AT<Self, Path::List> where
         Path: Attach<Self::View, View=V>,
-        Path::List: AtView<Self::View, View=V>,
     {
         path.attach_to(self)
     }
-    /*fn attach<List>(self, path: DetachedPath<Self::View, List>) 
-        -> AT<Self, List>
-    {
-        AT { cps: self, list: path.list }
-    }*/
 
     #[cfg(feature="detach")]
     /// Creates a new detach point.
@@ -223,17 +217,15 @@ impl<T: ?Sized> Cps for &mut T {
 ///
 /// If you pass a detached path to a function then you should use 
 /// a [`Path: Attach<CPS::View, View=V>`](trait.Attach.html) bound 
-/// paired with a [`Path::List: AtView<CPS::View, View=V>`](trait.AtView.html) 
-/// bound instead of a [`Cps<View=V>`](trait.Cps.html) bound.
+/// instead of a [`Cps<View=V>`](trait.Cps.html) bound.
 ///
 /// I.e.
 ///
 /// ```
 /// # #[cfg(feature="detach")] fn test() {
-/// # use smart_access::{AT, Cps, Attach, AtView, detached_at};
+/// # use smart_access::{Cps, Attach, detached_at};
 /// fn replace_at<CPS: Cps, Path, V>(cps: CPS, path: Path, x: V) -> Option<V> where
 ///     Path: Attach<CPS::View, View=V>,
-///     Path::List: AtView<CPS::View, View=V>
 /// {
 ///     cps.attach(path).replace(x)
 /// }
@@ -247,7 +239,8 @@ impl<T: ?Sized> Cps for &mut T {
 /// # test();
 /// ```
 ///
-/// But sometimes an explicit `AT` can be useful: 
+/// But sometimes an explicit `AT` can be useful (the example below 
+/// is artificial and thus not very illuminating...): 
 ///
 /// ```
 /// # #[cfg(feature="detach")] fn test() {
@@ -258,7 +251,7 @@ impl<T: ?Sized> Cps for &mut T {
 ///     CPS: Cps<View=W>,
 ///     W: At<usize, View=U> + ?Sized,
 ///     U: At<usize, View=V> + ?Sized,
-///     V: ?Sized
+///     V: ?Sized,
 /// {
 ///     let (a,i) = a_i.into();
 ///     let (_, path) = a.at(i).at(j).detach();
@@ -267,10 +260,9 @@ impl<T: ?Sized> Cps for &mut T {
 /// }
 ///
 /// let mut foo = vec![vec![1,2], vec![3,4]];
-/// let path = get_ij(foo.at(1), 0);
+/// let path = get_ij(detached_at(1), 0);
 /// 
-/// path.attach_to(&mut foo);
-/// //assert!(foo.attach(path).replace(5) == Some(3));
+/// assert!(foo.attach(path).replace(5) == Some(3));
 /// # }
 /// # #[cfg(not(feature="detach"))] fn test() {}
 /// # test();
@@ -283,7 +275,7 @@ pub struct AT<CPS, List> {
     list: List,
 }
 
-/// `access` returns `Some` / `None` according to the rules described [here](trait.At.hmtl)
+/// `access` returns `Some` / `None` according to the rules described [here](trait.At.html)
 impl<CPS: Cps, Path> Cps for AT<CPS, Path> where
     Path: AtView<CPS::View>
 {
@@ -397,11 +389,11 @@ impl<CPS: Cps, List> AT<CPS, List> {
 /// A more convoluted example: a functional index combinator.
 ///
 /// ```
-/// use smart_access::{Cps, DetachedPath};
+/// use smart_access::{Attach, Cps};
 ///
 /// type Mat = Vec<Vec<f64>>;
 ///
-/// fn mat_index<'a>(i: usize, j: usize) -> DetachedPath<Mat, (((), usize), usize)> {
+/// fn mat_index(i: usize, j: usize) -> impl Attach<Mat, View=f64> {
 ///     smart_access::detached_at(i).at(j)
 /// }
 ///
@@ -467,7 +459,7 @@ impl<CPS: Cps> Cps for AT<CPS, ()> {
 }
 
 
-/// `access` returns `Some` / `None` according to the rules described [here](trait.At.hmtl)
+/// `access` returns `Some` / `None` according to the rules described [here](trait.At.html)
 impl<CPS: Cps, Prev, Index, View: ?Sized> Cps for AT<CPS, (Prev, Index)> where
     AT<CPS, Prev>: Cps<View=View>,
     View: At<Index>
@@ -486,6 +478,8 @@ impl<CPS: Cps, Prev, Index, View: ?Sized> Cps for AT<CPS, (Prev, Index)> where
 
 
 /// A trait which is usually needed alongside [`Attach`](trait.Attach.html) bounds.
+///
+/// __Update: seems to be not needed now!__
 ///
 /// Essentially it's a type-level function mapping the `View` type of a 
 /// `Cps`-bounded value `x` and a path type of the form `(..((), I1), .. In)`

@@ -565,6 +565,70 @@
 //!
 //! can house any lens, prism or affine traversal.
 //!
+//! ## Version migration guide
+//!
+//! ### From 0.4 to 0.5
+//!
+//! #### Difference #1
+//!
+//! The [`AT`](struct.AT.html) type changed its representation. 
+//!
+//! Now it has simpler and more flat structure:
+//!
+//! `AT<CPS, (..(((), I1), I2) .. In)>`
+//!
+//! instead of
+//!
+//! `AT<..AT<AT<CPS, I1>, I2> .. In>`
+//!
+//! Unfortunately, the new structure doesn't play well with type inference 
+//! but this issue has been circumvented by separating the `Cps` implementation 
+//! into a helper trait (this trait isn't exposed to the public API).
+//!
+//! Because the `AT` type isn't to be used explicitly, usually there is 
+//! no need to change any code.
+//!
+//! Nevertheless there may exist some code which compiled on 0.4 and does not 
+//! compile on 0.5.
+//!
+//! #### Difference #2
+//!
+//! Relevant only to the `detach` feature.
+//!
+//! Now the [`detach`](struct.At.html#method.detach) method returns not 
+//! only the detached part but also the left part (an accessor with 
+//! the rest of the path attached).
+//!
+//! A new method [`cut`](trait.Cps.html#method.cut) is provided.
+//! It allows one to mark the place from which the detach starts.
+//!
+//! #### Difference #3
+//!
+//! Also about `detach`.
+//!
+//! The [`Attach`](trait.Attach.html) trait changed its parameter to `View` 
+//! instead of `CPS`.
+//!
+//! Usually it's sufficient to change `CPS` to `CPS::View` in generic code.
+//!
+//! Interestingly, there are some cases when
+//!
+//! ```
+//! # use smart_access::*; #[cfg(feature="detach")]
+//! fn foo<CPS: Cps, Path: Attach<CPS::View>> // ...
+//! # (){}
+//! ```
+//!
+//! is not equivalent to
+//!
+//! ```
+//! # use smart_access::*; #[cfg(feature="detach")]
+//! fn foo<CPS: Cps<View=V>, Path: Attach<V>, V: ?Sized> // ...
+//! # (){}
+//! ```
+//!
+//! For example, `impl Attach<V>` works but `impl Attach<CPS::View>` doesn't.
+//!
 //!
 //! ## Cargo features
 //!
@@ -603,5 +667,5 @@ pub use batch::{ BatchCt };
 pub use batch::{ BatchRt };
 
 #[cfg(feature="detach")]
-pub use at::{ Attach, AtView, DetachedPath, detached_at };
+pub use at::{ Attach, detached_at };
 

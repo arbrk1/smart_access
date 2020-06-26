@@ -58,7 +58,7 @@ smart_access = { version = "0.5", default-features = false, features = ["batch_c
 
 ## Versions
 
-* `0.5.0`: A change in the presentation of the `AT` struct. The `detach` feature reworked. Docs now have a version transition guide.
+* `0.5.0`: A change in the presentation of the `AT` struct. The `detach` feature reworked. Docs now have a version migration guide.
 * `0.4.1`: Fixed some serious bugs in the `detach`-enabled version of the crate.
 * `0.4.0`: Public API for using access batches as function inputs/outputs.
 * `0.3.0`: Public API for using detached accessors as function inputs/outputs.
