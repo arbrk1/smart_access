@@ -162,6 +162,19 @@ pub trait Cps: Sized {
 }
 
 
+/// `access` is guaranteed to return `Some(f(..))`
+impl<T: ?Sized> Cps for &mut T {
+    type View = T;
+    
+    fn access<R, F>(self, f: F) -> Option<R> where
+        F: FnOnce(&mut T) -> R
+    {
+        Some(f(self))
+    }
+}
+
+
+
 
 /// A &#8220;reference&#8221; to some &#8220;location&#8221;.
 ///
@@ -221,7 +234,7 @@ pub trait Cps: Sized {
 ///
 /// let mut vec = vec![1,2,3];
 ///
-/// assert!(replace_at::<_, ((), _), _>(&mut vec, detached_at(0), 4) == Some(1));
+/// assert!(replace_at(&mut vec, detached_at(0), 4) == Some(1));
 /// assert!(vec == vec![4,2,3]);
 /// # }
 /// # #[cfg(not(feature="detach"))] fn test() {}
@@ -262,6 +275,19 @@ pub struct AT<CPS, List> {
     list: List,
 }
 
+/// `access` returns `Some` / `None` according to the rules described [here](trait.At.hmtl)
+impl<CPS: Cps, Path> Cps for AT<CPS, Path> where
+    Path: ATView<CPS>
+{
+    type View = Path::View;
+    
+    fn access<R, F>(self, f: F) -> Option<R> where 
+        F: FnOnce(&mut Self::View) -> R 
+    {
+        self.list.give_access(self.cps, f)
+    }
+}
+
 
 
 impl<CPS, List> AT<CPS, List> {
@@ -273,38 +299,6 @@ impl<CPS, List> AT<CPS, List> {
         View: At<Index>
     {
         AT { cps: self.cps, list: (self.list, i) } 
-    }
-}
-
-
-/// A [detach point](trait.Cps.html#method.cut).
-///
-/// Even without `detach` it is used to stop trait recursion.
-impl<CPS: Cps> Cps for AT<CPS, ()> {
-    type View = CPS::View;
-    
-    fn access<R, F>(self, f: F) -> Option<R> where 
-        F: FnOnce(&mut Self::View) -> R 
-    {
-        self.cps.access(f)
-    }
-}
-
-
-/// `access` returns `Some` / `None` according to rules described [here](trait.At.hmtl)
-impl<CPS: Cps, Prev, Index, View: ?Sized> Cps for AT<CPS, (Prev, Index)> where
-    AT<CPS, Prev>: Cps<View=View>,
-    View: At<Index>
-{
-    type View = View::View;
-    
-    fn access<R, F>(self, f: F) -> Option<R> where 
-        F: FnOnce(&mut Self::View) -> R 
-    {
-        let (prev, index) = self.list;
-        let at = AT { cps: self.cps, list: prev };
-
-        at.access(|v| { v.access_at(index, f) }).flatten()
     }
 }
 
@@ -449,14 +443,72 @@ pub fn detached_at<View: ?Sized, I>(i: I) -> AT<DetachedRoot<View>, ((), I)> whe
 
 
 
-/// `access` is guaranteed to return `Some(f(..))`
-impl<T: ?Sized> Cps for &mut T {
-    type View = T;
+
+/*
+/// A [detach point](trait.Cps.html#method.cut).
+///
+/// Even without `detach` it is used to stop trait recursion.
+impl<CPS: Cps> Cps for AT<CPS, ()> {
+    type View = CPS::View;
     
-    fn access<R, F>(self, f: F) -> Option<R> where
-        F: FnOnce(&mut T) -> R
+    fn access<R, F>(self, f: F) -> Option<R> where 
+        F: FnOnce(&mut Self::View) -> R 
     {
-        Some(f(self))
+        self.cps.access(f)
+    }
+}
+
+
+/// `access` returns `Some` / `None` according to the rules described [here](trait.At.hmtl)
+impl<CPS: Cps, Prev, Index, View: ?Sized> Cps for AT<CPS, (Prev, Index)> where
+    AT<CPS, Prev>: Cps<View=View>,
+    View: At<Index>
+{
+    type View = View::View;
+    
+    fn access<R, F>(self, f: F) -> Option<R> where 
+        F: FnOnce(&mut Self::View) -> R 
+    {
+        let (prev, index) = self.list;
+        let at = AT { cps: self.cps, list: prev };
+
+        at.access(|v| { v.access_at(index, f) }).flatten()
+    }
+}*/
+
+
+// A workaround for the inability of the Rust compiler to infer types 
+// in presence of flexible recurrent contexts.
+pub trait ATView<CPS>: Sized {
+    type View: ?Sized;
+
+    fn give_access<R, F>(self, cps: CPS, f: F) -> Option<R> where
+        F: FnOnce(&mut Self::View) -> R;
+}
+
+
+impl<CPS: Cps> ATView<CPS> for () {
+    type View = CPS::View;
+    
+    fn give_access<R, F>(self, cps: CPS, f: F) -> Option<R> where
+        F: FnOnce(&mut Self::View) -> R
+    {
+        cps.access(f)
+    }
+}
+
+impl<CPS: Cps, Prev, Index> ATView<CPS> for (Prev, Index) where
+    Prev: ATView<CPS>,
+    Prev::View: At<Index>
+{
+    type View = <Prev::View as At<Index>>::View;
+    
+    fn give_access<R, F>(self, cps: CPS, f: F) -> Option<R> where
+        F: FnOnce(&mut Self::View) -> R
+    {
+        let (prev, index) = self;
+
+        prev.give_access(cps, |v| { v.access_at(index, f) }).flatten()
     }
 }
 
