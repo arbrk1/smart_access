@@ -25,12 +25,19 @@ impl<V: ?Sized> Cps for DetachedRoot<V> {
 }
 
 
+/// A concrete type of [detached](struct.AT.html#method.detach) paths. __Requires `detach` feature.__
+///
+/// Usually [`impl Attach<V, View=W>`](trait.Attach.html) 
+/// is preferable to `DetachedPath<V, List>` 
+/// but sometimes the latter prevents fighting with the borrow checker 
+/// (`impl Trait` returned from a function holds all the references 
+/// passed to generically typed arguments of the function).
 pub type DetachedPath<View, List> = AT<DetachedRoot<View>, List>;
 
 
 /// A detached path. __Requires `detach` feature.__
 ///
-/// Can be created by a [`detached_at`](fn.detached_at.html) function.
+/// Can be created by the [`detached_at`](fn.detached_at.html) function.
 ///
 /// See examples [here](struct.AT.html) and [here](fn.detached_at.html).
 pub trait Attach<View: ?Sized>: Sized {

@@ -14,7 +14,7 @@ mod detach; // detached paths
 use detach::{ DetachedRoot };
 
 #[cfg(feature="detach")]
-pub use detach::{ Attach };
+pub use detach::{ Attach, DetachedPath };
 
 
 
@@ -322,7 +322,7 @@ impl<CPS,Prev,I> From<AT<CPS,(Prev,I)>> for (AT<CPS,Prev>,I)
 #[cfg(feature="detach")]
 impl<CPS: Cps, List> AT<CPS, List> {
 
-/// Detaches the path starting from the [detach point](trait.Cps.html#method.cut).
+/// Detaches the path starting from the nearest [detach point](trait.Cps.html#method.cut).
 ///
 /// _Present only on `detach`._
 ///
@@ -351,7 +351,7 @@ impl<CPS: Cps, List> AT<CPS, List> {
 /// bar.attach(path.at(0)).replace(3);
 /// assert!(bar == vec![vec![vec![3]]]);
 /// ```
-    pub fn detach(self) -> (CPS, AT<DetachedRoot<CPS::View>, List>) {
+    pub fn detach(self) -> (CPS, DetachedPath<CPS::View, List>) {
         (self.cps, AT { cps: DetachedRoot::new(), list: self.list })
     }
 }
@@ -359,8 +359,8 @@ impl<CPS: Cps, List> AT<CPS, List> {
 
 /// Creates a detached path. __Requires `detach` feature.__
 ///
-/// A type of the return value of `detached_at::<V>` 
-/// implements [`Attach<CPS: Cps<View=V>, View=V>`](trait.Attach.html).
+/// The type of a value returned by `detached_at::<V, I>`
+/// implements [`Attach<V, View=<V as At<I>>::View>`](trait.Attach.html).
 ///
 /// _Present only on `detach`._
 ///
@@ -432,7 +432,7 @@ impl<CPS: Cps, List> AT<CPS, List> {
 /// assert!(mat.at( (1,1) ).replace(0.) == Some(4.));
 /// ```
 #[cfg(feature="detach")]
-pub fn detached_at<View: ?Sized, I>(i: I) -> AT<DetachedRoot<View>, ((), I)> where
+pub fn detached_at<View: ?Sized, I>(i: I) -> DetachedPath<View, ((), I)> where
     View: At<I>
 {
     AT {
@@ -444,42 +444,9 @@ pub fn detached_at<View: ?Sized, I>(i: I) -> AT<DetachedRoot<View>, ((), I)> whe
 
 
 
-/*
-/// A [detach point](trait.Cps.html#method.cut).
+/// A trait which may be needed alongside [`Attach`](trait.Attach.html) bounds.
 ///
-/// Even without `detach` it is used to stop trait recursion.
-impl<CPS: Cps> Cps for AT<CPS, ()> {
-    type View = CPS::View;
-    
-    fn access<R, F>(self, f: F) -> Option<R> where 
-        F: FnOnce(&mut Self::View) -> R 
-    {
-        self.cps.access(f)
-    }
-}
-
-
-/// `access` returns `Some` / `None` according to the rules described [here](trait.At.html)
-impl<CPS: Cps, Prev, Index, View: ?Sized> Cps for AT<CPS, (Prev, Index)> where
-    AT<CPS, Prev>: Cps<View=View>,
-    View: At<Index>
-{
-    type View = View::View;
-    
-    fn access<R, F>(self, f: F) -> Option<R> where 
-        F: FnOnce(&mut Self::View) -> R 
-    {
-        let (prev, index) = self.list;
-        let at = AT { cps: self.cps, list: prev };
-
-        at.access(|v| { v.access_at(index, f) }).flatten()
-    }
-}*/
-
-
-/// A trait which is usually needed alongside [`Attach`](trait.Attach.html) bounds.
-///
-/// __Update: seems to be not needed now!__
+/// __Update (v 0.5.0): seems to be not needed now!__
 ///
 /// Essentially it's a type-level function mapping the `View` type of a 
 /// `Cps`-bounded value `x` and a path type of the form `(..((), I1), .. In)`

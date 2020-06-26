@@ -627,7 +627,10 @@
 //! # (){}
 //! ```
 //!
-//! For example, `impl Attach<V>` works but `impl Attach<CPS::View>` doesn't.
+//! For example, `impl Attach<V>` works after being returned from a function 
+//! but `impl Attach<CPS::View>` doesn't (it seems to be connected with 
+//! the fact that Rust currenlty doesn't &#8220;elaborate&#8221; (i.e. reduce) 
+//! bounds on the associated types).
 //!
 //!
 //! ## Cargo features
@@ -667,5 +670,5 @@ pub use batch::{ BatchCt };
 pub use batch::{ BatchRt };
 
 #[cfg(feature="detach")]
-pub use at::{ Attach, detached_at };
+pub use at::{ Attach, detached_at, DetachedPath };
 
