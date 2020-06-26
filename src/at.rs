@@ -123,7 +123,7 @@ pub trait Cps: Sized {
     ///
     /// _Present only on `detach`._
     fn attach<Path, V: ?Sized>(self, path: Path) -> AT<Self, Path::List> where
-        Path: Attach<ToView=Self::View, View=V>,
+        Path: Attach<Self::View, View=V>,
         Path::List: AtView<Self::View, View=V>,
     {
         path.attach_to(self)
@@ -222,7 +222,7 @@ impl<T: ?Sized> Cps for &mut T {
 /// _Relevant only with the `detach` feature enabled._
 ///
 /// If you pass a detached path to a function then you should use 
-/// a [`Path: Attach<ToView=CPS::View, View=V>`](trait.Attach.html) bound 
+/// a [`Path: Attach<CPS::View, View=V>`](trait.Attach.html) bound 
 /// paired with a [`Path::List: AtView<CPS::View, View=V>`](trait.AtView.html) 
 /// bound instead of a [`Cps<View=V>`](trait.Cps.html) bound.
 ///
@@ -232,7 +232,7 @@ impl<T: ?Sized> Cps for &mut T {
 /// # #[cfg(feature="detach")] fn test() {
 /// # use smart_access::{AT, Cps, Attach, AtView, detached_at};
 /// fn replace_at<CPS: Cps, Path, V>(cps: CPS, path: Path, x: V) -> Option<V> where
-///     Path: Attach<ToView=CPS::View, View=V>,
+///     Path: Attach<CPS::View, View=V>,
 ///     Path::List: AtView<CPS::View, View=V>
 /// {
 ///     cps.attach(path).replace(x)
@@ -253,10 +253,10 @@ impl<T: ?Sized> Cps for &mut T {
 /// # #[cfg(feature="detach")] fn test() {
 /// use smart_access::*;
 ///
-/// fn get_ij<CPS: Cps, U, V>(a_i: AT<CPS, ((), usize)>, j: usize) 
-///     -> impl Attach<ToView=CPS::View, View=V> where 
-///     CPS: Cps,
-///     CPS::View: At<usize, View=U>,
+/// fn get_ij<CPS, U, V, W>(a_i: AT<CPS, ((), usize)>, j: usize) 
+///     -> impl Attach<W, View=V> where 
+///     CPS: Cps<View=W>,
+///     W: At<usize, View=U> + ?Sized,
 ///     U: At<usize, View=V> + ?Sized,
 ///     V: ?Sized
 /// {
