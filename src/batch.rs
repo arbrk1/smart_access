@@ -38,6 +38,10 @@ use crate::at::Cps;
 ///
 /// Compile-time batches are abstracted by the trait [`BatchCt`](trait.BatchCt.html).
 ///
+/// If needed, the concrete type of the compile-time batch can be specified 
+/// by means of the [`path`](macro.path.html) macro or fully explicitly: 
+/// `CpsBatch<CPS, (..(((), F1), F2) .. Fn)>`.
+///
 ///
 /// ## Runtime version
 ///

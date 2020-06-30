@@ -150,7 +150,7 @@
 //!     {
 //!         if let Some(v) = self.get_mut(&kv.key) { 
 //!             return Some(f(v)); 
-//!             // We use so called CPS-transformation: we wrap each 
+//!             // We use the so called CPS-transformation: we wrap each 
 //!             // return site with a call to the provided function.
 //!         } 
 //!
@@ -588,7 +588,7 @@
 //! Because the `AT` type isn't to be used explicitly, usually there is 
 //! no need to change any code.
 //!
-//! Nevertheless there may exist some code which compiled on 0.4 and does not 
+//! Nevertheless there may exist some code which has compiled on 0.4 and does not 
 //! compile on 0.5.
 //!
 //! #### Difference #2
@@ -672,3 +672,5 @@ pub use batch::{ BatchRt };
 #[cfg(feature="detach")]
 pub use at::{ Attach, detached_at, DetachedPath };
 
+
+mod macros;

@@ -184,19 +184,33 @@ impl<T: ?Sized> Cps for &mut T {
 ///
 /// `AT<&mut root, (..((((), I1), I2), I3) .. In)>`
 ///
-/// But beware! Starting with version `0.5` there is a possibility to create
-/// multilevel hierarchies like
+/// But beware! Starting with the version `0.5` there is a possibility 
+/// of accidentally creating multilevel hierarchies like
 ///
 /// `AT<AT<&mut root, ((), I1)>, ((), I2)>`
 ///
 /// by using the [`at` of `Cps`](trait.Cps.html#method.at) instead of 
 /// its [`AT`-override](#method.at).
 /// 
-/// Moreover, the `detach` feature is now based on such nonlinear structures.
+/// Moreover, the `detach` feature is now based on such nonflat structures.
+///
+/// ## Usage in function types
 ///
 /// Though `AT` is exposed, it's strongly recommended to use
-/// [`impl Cps<View=T>`](trait.Cps.html) as a return type of your functions 
+/// [`impl Cps<View=T>`](trait.Cps.html) as a return type of functions 
 /// and [`Cps<View=T>`](trait.Cps.html) bounds on their parameters.
+///
+/// But when needed (for example, due to some complex lifetimes), usage of `AT` 
+/// can be facilitated by the [`path`](macro.path.html) macro allowing one 
+/// to write
+///
+/// `AT<CPS, path!(I, J, K)>`
+///
+/// instead of
+///
+/// `AT<CPS, ((((), I), J), K)>`
+///
+/// ## Detaching paths
 ///
 /// Enabling `detach` feature allows one to [detach](#method.detach) `AT`s from their roots. 
 ///
@@ -246,7 +260,7 @@ impl<T: ?Sized> Cps for &mut T {
 /// # #[cfg(feature="detach")] fn test() {
 /// use smart_access::*;
 ///
-/// fn get_ij<CPS, U, V, W>(a_i: AT<CPS, ((), usize)>, j: usize) 
+/// fn get_ij<CPS, U, V, W>(a_i: AT<CPS, path!(usize)>, j: usize) 
 ///     -> impl Attach<W, View=V> where 
 ///     CPS: Cps<View=W>,
 ///     W: At<usize, View=U> + ?Sized,
