@@ -58,6 +58,7 @@ smart_access = { version = "0.5", default-features = false, features = ["batch_c
 
 ## Versions
 
+* `0.5.3`: A new sort of map accessors (wrapping `and_modify(..).or_insert(..)`).
 * `0.5.2`: Added a macro for forming pathlike types.
 * `0.5.1`: Some errors in the documentation fixed. A concrete type of detached paths is now public.
 * `0.5.0`: A change in the presentation of the `AT` struct. The `detach` feature reworked. Docs now have a version migration guide.

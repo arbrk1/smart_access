@@ -4,16 +4,70 @@
 //! The following traits are implemented:
 //! * `At<usize, View=T> for Vec<T>`: simple indexing
 //! * `At<range, View=Vec<T>> for Vec<T>`: subvector (its size can be changed); 
-//!   __Warning:__ access is O(n), wrap vector in `&mut[..]` to get O(1) access
+//!   __Warning:__ access is O(n); wrap vector in `&mut[..]` to get O(1) access
 //! * `At<K, View=V> for <Some>Map<K,V>`: access value if it is present 
 //! * `At<(K,V), View=V> for <Some>Map<K,V>`: ensure that the value is 
 //!   present (using the provided default) then access it
+//! * `AT<(K,V,M), View=V> for <Some>Map<K,V>`: if the value is present 
+//!   then preprocess it with a mutator `M`, otherwise insert the provided `V` 
 //!
 //! Though in normal circumstances these implementations __do not__ panic
 //! there __exists__ a possibility of panicking. For example 
 //! `At<range> for Vec<T>` splits vector into (at most) three parts
-//! then glues them back after the update. Every one of these actions 
+//! then glues them back after the update. Every of these actions 
 //! can panic on Out Of Memory.
+//!
+//! ### Vector accessors
+//!
+//! ```
+//! # use smart_access::{ Cps };
+//! let mut foo = vec![1,2,3];
+//!
+//! assert!(foo.at(0).replace(4) == Some(1));
+//! assert!(foo == vec![4,2,3]);
+//! 
+//! assert!(foo.at(3).replace(0) == None);
+//! assert!(foo == vec![4,2,3]);
+//!
+//! assert!(foo.at(1..=2).replace(vec![5,6,7]) == Some(vec![2,3]));
+//! assert!(foo == vec![4,5,6,7]);
+//! ```
+//!
+//!
+//! ### Map accessors
+//!
+//! Implemented for `HashMap` and `BTreeMap`:
+//!
+//! * `map.at(&k).access(f)` is equivalent to `map.get_mut(&k).map(|v| f(v))`
+//! * `map.at( (k,v) ).access(f)` is equivalent to `Some(f(map.entry(k).or_insert(v)))`
+//! * `map.at( (k,v,m) ).access(f)` is equivalent to `Some(f(self.entry(k).and_modify(m).or_insert(v)))`
+//!
+//! ```
+//! # use smart_access::{ Cps };
+//! # use std::collections::HashMap;
+//! let mut hm = HashMap::<usize, usize>::new();
+//!
+//! hm.at( (42, 1) ).touch();
+//!
+//! let mut found = false;
+//! hm.at(&42).access(|x| { 
+//!     assert!(*x == 1);
+//!
+//!     found = true;
+//!     
+//!     *x += 1; 
+//! });
+//!
+//! assert!(found);
+//! assert!(hm.get(&42) == Some(&2));
+//!
+//! let mutator = |x: &mut _| { *x = 4; };
+//! hm.at( (41, 3, &mutator) ).touch();
+//! hm.at( (42, 3, &mutator) ).touch();
+//! 
+//! assert!(hm.get(&41) == Some(&3));
+//! assert!(hm.get(&42) == Some(&4));
+//! ```
 
 mod vec;
 mod map;
