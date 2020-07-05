@@ -9,7 +9,7 @@
 //! accessing some data but in a different way: they have trivial drop semantics 
 //! and nontrivial access semantics.
 //!
-//! ### Note
+//! ## TLDR
 //!
 //! If you do not want to read a long text, just proceed to the 
 //! [essential part](#cargo-features) of the documentation.

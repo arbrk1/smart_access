@@ -5,11 +5,16 @@
 //! * `At<usize, View=T> for Vec<T>`: simple indexing
 //! * `At<range, View=Vec<T>> for Vec<T>`: subvector (its size can be changed); 
 //!   __Warning:__ access is O(n); wrap vector in `&mut[..]` to get O(1) access
-//! * `At<K, View=V> for <Some>Map<K,V>`: access value if it is present 
+//! * `At<&Q, View=V> for <Some>Map<K,V>`: access the value if it is present 
 //! * `At<(K,V), View=V> for <Some>Map<K,V>`: ensure that the value is 
 //!   present (using the provided default) then access it
 //! * `AT<(K,V,M), View=V> for <Some>Map<K,V>`: if the value is present 
-//!   then preprocess it with a mutator `M`, otherwise insert the provided `V` 
+//!   then preprocess it with a mutator `M`, otherwise insert the provided `V`
+//! * `AT<&Q, View=T> for <Some>Set<T>`: access the value if it is present
+//! * `AT<(T,()), View=T> for <Some>Set<T>`: ensure that the value is present 
+//!   then access it
+//! * `AT<(T,), View=<Some>Set<T>> for <Some>Set<T>`: ensure that the value 
+//!   is present
 //!
 //! Though in normal circumstances these implementations __do not__ panic
 //! there __exists__ a possibility of panicking. For example 
@@ -17,7 +22,7 @@
 //! then glues them back after the update. Every of these actions 
 //! can panic on Out Of Memory.
 //!
-//! ### Vector accessors
+//! ## Vector accessors
 //!
 //! ```
 //! # use smart_access::{ Cps };
@@ -34,7 +39,7 @@
 //! ```
 //!
 //!
-//! ### Map accessors
+//! ## Map accessors
 //!
 //! Implemented for `HashMap` and `BTreeMap`:
 //!
@@ -68,9 +73,46 @@
 //! assert!(hm.get(&41) == Some(&3));
 //! assert!(hm.get(&42) == Some(&4));
 //! ```
+//!
+//!
+//! ## Set accessors
+//!
+//! Implemented for `HashSet<T>` and `BTreeSet<T>`.
+//!
+//! Semantics differ from the `HashMap<T, ()>` and `BTreeMap<T, ()>` implementations: 
+//! the `Map` ones _do not_ change the key, but the `Set` ones _do_ change.
+//!
+//! Compare:
+//!
+//! ```
+//! # use std::collections::{ HashMap, HashSet };
+//! # use smart_access::Cps;
+//! let mut map = HashMap::<String,()>::new();
+//! let mut set = HashSet::<String>::new();
+//!
+//! map.at( ("Hello".to_string(), ()) ).touch();
+//! set.at( ("Hello".to_string(), ()) ).touch();
+//!
+//! map.at("Hello").access(|()| { /* We can do nothing here with the string... */ });
+//! set.at("Hello").access(|hello| { *hello = "world".to_string(); } );
+//!
+//! assert!(set == vec!["world".to_string()].into_iter().collect());
+//! ```
+//!
+//! Also a one-tuple accessor is available, allowing to chain insertions:
+//! 
+//! ```
+//! # use std::collections::{ HashSet };
+//! # use smart_access::Cps;
+//! let mut set = HashSet::new();
+//! 
+//! set.at( (2,) ).at( (3,) ).at( (5,) ).at( (7,) ).touch();
+//! assert!(set == vec![2,3,5,7].into_iter().collect());
+//! ```
 
 mod vec;
 mod map;
+mod set;
 
 #[test]
 fn test_vec() {

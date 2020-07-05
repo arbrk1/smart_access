@@ -16,6 +16,33 @@ impl<Q,K,V> At<&Q> for HashMap<K,V> where
     }
 }
 
+
+/* EDIT-ACCESSOR: WIP
+impl<Q,K,V> At<Option<&Q>> for HashMap<K,V> where
+    K: Borrow<Q> + Eq + Hash,
+    Q: ?Sized + Eq + Hash
+{
+    type View = Option<V>;
+
+    fn access_at<R,F>(&mut self, maybe_i: Option<&Q>, f: F) -> Option<R> where
+        F: FnOnce(&mut Option<V>) -> R
+    {
+        maybe_i.map(|i| {
+            self.remove_entry(i).map(|(k,v)| {
+                let mut cell = Some(v);
+
+                let result = f(&mut cell);
+
+                if let Some(new_v) = cell {
+                    self.insert(k, new_v);
+                }
+
+                result
+            })
+        }).flatten()
+    }
+}*/
+
 impl<K,V> At<(K,V)> for HashMap<K,V> where
     K: Eq + Hash,
 {
@@ -54,6 +81,51 @@ impl<Q,K,V> At<&Q> for BTreeMap<K,V> where
         self.get_mut(i).map(|v| f(v))
     }
 }
+
+
+/* EDIT-ACCESSOR: WIP
+impl<Q,K,V> At<Option<&Q>> for BTreeMap<K,V> where
+    K: Borrow<Q> + Ord /* FIXME: remove Clone when remove_entry stabilizes */ + Clone,
+    Q: ?Sized + Ord
+{
+    type View = Option<V>;
+
+    fn access_at<R,F>(&mut self, maybe_i: Option<&Q>, f: F) -> Option<R> where
+        F: FnOnce(&mut Option<V>) -> R
+    {
+        maybe_i.map(|i| {
+            if let Some( (k,_) ) = self.get_key_value(i) {
+                let k = k.clone();
+                let v = self.remove(i).unwrap();
+
+                let mut cell = Some(v);
+                
+                let result = f(&mut cell);
+
+                if let Some(new_v) = cell {
+                    self.insert(k, new_v);
+                }
+
+                Some(result)
+            } else { None }
+        }).flatten()
+
+        /* UNSTABLE (rustc v1.44)
+        maybe_i.map(|i| {
+            self.remove_entry(i).map(|(k,v)| {
+                let mut cell = Some(v);
+
+                let result = f(&mut cell);
+
+                if let Some(new_v) = cell {
+                    self.insert(k, new_v);
+                }
+
+                result
+            })
+        }).flatten() */
+    }
+}*/
 
 impl<K,V> At<(K,V)> for BTreeMap<K,V> where
     K: Ord,

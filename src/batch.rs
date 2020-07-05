@@ -295,7 +295,7 @@ pub fn new_batch_rt<CPS, V, R>(cps: CPS) -> CpsBatch<CPS, Vec<FnBoxRt<V,R>>> whe
 }
 
 
-/// An abstraction over compile-time and runtime batches. 
+/// An abstraction over [compile-time and runtime batches](struct.CpsBatch.html). 
 /// __Requires `batch_ct` or `batch_rt`.__
 ///
 /// The only thing which can be done with a value of `Batch`-bounded 
