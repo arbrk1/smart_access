@@ -672,5 +672,8 @@ pub use batch::{ BatchRt };
 #[cfg(feature="detach")]
 pub use at::{ Attach, detached_at, DetachedPath };
 
+#[cfg(feature="iter_mut")]
+pub mod iter_mut;
+
 
 mod macros;

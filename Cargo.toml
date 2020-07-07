@@ -1,6 +1,6 @@
 [package]
 name = "smart_access"
-version = "0.5.4"
+version = "0.6.0"
 authors = ["arbrk1 <arbrk1@gmail.com>"]
 edition = "2018"
 description = 'A minimalistic zero-dependency "lazy bidirectional pointer" framework.'
@@ -13,14 +13,17 @@ categories = ["data-structures", "rust-patterns", "no-std"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+multiref = { version = "0.1", optional = true }
 
 [features]
 std = []
 std_collections = ["std"]
 batch_rt = ["std"]
 batch_ct = []
+batch = ["batch_ct", "batch_rt"]
 detach = []
-default = ["std", "std_collections", "batch_rt", "batch_ct", "detach"]
+iter_mut = ["multiref", "std"]
+default = ["std", "std_collections", "batch_rt", "batch_ct", "detach", "iter_mut"]
 
 [[test]]
 name = "no_std"
