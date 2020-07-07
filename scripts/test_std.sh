@@ -1,4 +1,5 @@
 #!/bin/bash
-cargo test --no-default-features --features "std_collections"
-cargo test --no-default-features --features "std_collections batch_ct batch_rt"
-cargo test --no-default-features --features "std_collections detach"
+cargo test
+cargo test --no-default-features --features "collections batch_ct batch_rt"
+cargo test --no-default-features --features "collections detach"
+cargo test --no-default-features --features "collections"

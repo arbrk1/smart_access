@@ -1,8 +1,13 @@
 //! Support for arbitrary mutating iterators.
 //! __Requires `iter_mut`.__
 //!
-//! Unfortunately, can't be used without `std`: memory for storing 
-//! pointers is allocated internally during the access.
+//! Unfortunately, this module can't be used without `std`: 
+//! our `Cps` values are affine traversals, thus they must have 
+//! all the iteration results simultaneously, which in turn requires
+//! allocating memory at runtime.
+//!
+//! _It is planned to make the `smart_access` crate dependent only on 
+//! the `alloc` crate._
 //!
 //! This module depends on the [`multiref`](https://crates.io/crates/multiref/) 
 //! crate. The [`Slice`](struct.Slice.html) type is re-exported 
@@ -34,9 +39,10 @@
 //!     inner.insert("x", 10);
 //! });
 //! 
-//! map.range_mut(5..).map(|(_,v)| v).at(Bounds(..)).access(|slice| {
-//!     slice.as_mut()[0].at("a").replace(11);
-//! });
+//! // Hurrah!!! CPS without callback hell!
+//! map.range_mut(5..).map(|(_,v)| v).at(Bounds(..)).at(1).at("a").replace(11);
+//!
+//! assert!(map.at(&8).at("a").get_clone() == Some(11));
 //! ```
 
 pub use multiref::Slice;

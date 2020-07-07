@@ -1,5 +1,5 @@
 //! Implementation of [`At`](../trait.At.html) for stdlib collections. 
-//! __Requires `std_collections` feature.__
+//! __Requires the `collections` feature.__
 //!
 //! The following traits are implemented:
 //! * `At<usize, View=T> for Vec<T>`: simple indexing

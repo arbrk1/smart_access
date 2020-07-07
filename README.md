@@ -26,7 +26,7 @@ For code examples see [the docs](https://docs.rs/smart_access/).
 Simply include 
 
 ```
-smart_access = "0.5"
+smart_access = "0.6"
 ```
 
 in your `Cargo.toml`.
@@ -38,7 +38,7 @@ The library, although being very small, includes some pluggable components.
 For a bare-bones version use
 
 ```
-smart_access = { version = "0.5", default-features = false }
+smart_access = { version = "0.6", default-features = false }
 ```
 
 But usually you'll want something more convenient.
@@ -46,18 +46,19 @@ But usually you'll want something more convenient.
 #### Accessors for Vec, HashMap and BTreeMap
 
 ```
-smart_access = { version = "0.5", default-features = false, features = ["std_collections"] }
+smart_access = { version = "0.6", default-features = false, features = ["collections"] }
 ```
 
 #### A maximal `no_std` variant
 
 ```
-smart_access = { version = "0.5", default-features = false, features = ["batch_ct", "detach"] }
+smart_access = { version = "0.6", default-features = false, features = ["batch_ct", "detach"] }
 ```
 
 
 ## Versions
 
+* `0.6.0`: Accessors for iterators + `get_clone` method on the `Cps` trait.
 * `0.5.4`: Accessors for stdlib sets + doc improvements.
 * `0.5.3`: A new sort of map accessors (wrapping `and_modify(..).or_insert(..)`).
 * `0.5.2`: Added a macro for forming pathlike types.

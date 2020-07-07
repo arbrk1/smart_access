@@ -6,7 +6,7 @@
 //! with trivial access (dereference) semantics and nontrivial clone/drop semantics.
 //!
 //! Smart __accessors__ provided by this crate also serve the purpose of 
-//! accessing some data but in a different way: they have trivial drop semantics 
+//! accessing some data, but in a different way: they have trivial drop semantics 
 //! and nontrivial access semantics.
 //!
 //! ## TLDR
@@ -17,7 +17,7 @@
 //!
 //! ## High level overview
 //!
-//! The goal of this crate is twofold:
+//! The goal of this crate is threefold:
 //!
 //! * to offer one possible solution to the
 //! [problem](https://rust-lang.github.io/rfcs/2094-nll.html#problem-case-3-conditional-control-flow-across-functions) that 
@@ -27,10 +27,12 @@
 //!   doesn't have this problem but it is not stable yet)
 //! * to provide a way to do bidirectional programming (when updating 
 //!   some view of data updates the data viewed to match the updated view)
+//! * last but not least, to reduce amount of callback hell 
+//!   while programming in continuation-passing-style
 //!
 //! If you are aqcuainted with optics in functional languages you can 
 //! think of this crate as a minimalistic &#8220;lens&#8221; (more precisely, 
-//! affine traversal) library using an imperative approach.
+//! affine traversal) library using an opionated imperative approach.
 //!
 //! ### Note
 //!
@@ -638,12 +640,12 @@
 //! Currently there are following features:
 //!
 //! * `std`: Links to std.
-//! * `std_collections`: Provides accessors for stdlib collections.
+//! * `collections`: Provides [accessors for stdlib collections](./stdlib_impls/).
 //! * `batch_rt`: Provides runtime [batching](struct.CpsBatch.html).
-//! * `batch_ct`: Provides compile-time [batching](struct.CpsBatch.html). 
-//!   Compatible with `no_std`.
-//! * `detach`: Makes [`AT`](struct.AT.html)-paths [detachable](struct.AT.html#method.detach). 
-//!   Compatible with `no_std`.
+//! * `batch_ct`: Provides compile-time [batching](struct.CpsBatch.html). __Compatible with `no_std`.__
+//! * `batch`: An alias for `batch_rt` and `batch_ct` enabled simultaneously.
+//! * `detach`: Makes [`AT`](struct.AT.html)-paths [detachable](struct.AT.html#method.detach). __Compatible with `no_std`.__
+//! * `iter_mut`: [Accessors for iterators](./iter_mut/). __Pulls the [`multiref`](https://crates.io/crates/multiref) crate.__
 //!
 //! All features are enabled by default.
 
@@ -652,7 +654,7 @@
 mod at;
 pub mod core_impls;
 
-#[cfg(feature="std_collections")]
+#[cfg(feature="collections")]
 pub mod stdlib_impls;
 
 pub use at::{At, AT, Cps};

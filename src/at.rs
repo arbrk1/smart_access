@@ -87,6 +87,13 @@ pub trait Cps: Sized {
         self.access(|_| ())
     }
 
+    /// Equivalent to `self.access(|x| x.clone())`
+    fn get_clone(self) -> Option<Self::View> where
+        Self::View: Sized + Clone
+    {
+        self.access(|x| x.clone())
+    }
+
     /// &#8220;Moves in the direction&#8221; of the provided index.
     ///
     /// __Not intended for overriding.__
