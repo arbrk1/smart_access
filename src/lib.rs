@@ -14,6 +14,8 @@
 //! If you do not want to read a long text, just proceed to the 
 //! [essential part](#cargo-features) of the documentation.
 //!
+//! Also there is the [version migration guide](#version-migration-guide).
+//!
 //!
 //! ## High level overview
 //!
@@ -569,6 +571,27 @@
 //!
 //! ## Version migration guide
 //!
+//! ### From 0.5 to 0.6
+//!
+//! #### Difference #1
+//!
+//! The `std_collections` feature is now named `collections`.
+//!
+//! The `std` feature is deprecated. In the next version it will very likely be 
+//! replaced by the `alloc` feature, responsible for linking to the `alloc` crate.
+//!
+//! #### Difference #2
+//!
+//! There is a new feature [`iter_mut`](./iter_mut/). 
+//! It depends on the external crate 
+//! [`multiref`](https://crates.io/crates/multiref/). That crate 
+//! doesn't use any complex type-level programming, thus making 
+//! the increase in the compilation time insignificant.
+//!
+//! But if you do not tolerate any dependencies or unsafe code, 
+//! you can opt it out, losing some expressiveness.
+//!
+//!
 //! ### From 0.4 to 0.5
 //!
 //! #### Difference #1
@@ -634,12 +657,11 @@
 //! the fact that Rust currenlty doesn't &#8220;elaborate&#8221; (i.e. reduce) 
 //! bounds on the associated types).
 //!
-//!
 //! ## Cargo features
 //!
 //! Currently there are following features:
 //!
-//! * `std`: Links to std.
+//! * `std`: Links to std. __Deprecated. Will be removed in 0.7.__
 //! * `collections`: Provides [accessors for stdlib collections](./stdlib_impls/).
 //! * `batch_rt`: Provides runtime [batching](struct.CpsBatch.html).
 //! * `batch_ct`: Provides compile-time [batching](struct.CpsBatch.html). __Compatible with `no_std`.__

@@ -2,7 +2,7 @@
 //! __Requires `iter_mut`.__
 //!
 //! Unfortunately, this module can't be used without `std`: 
-//! our `Cps` values are affine traversals, thus they must have 
+//! our `Cps` values are _affine_ traversals, thus they must have 
 //! all the iteration results simultaneously, which in turn requires
 //! allocating memory at runtime.
 //!
@@ -43,6 +43,18 @@
 //! map.range_mut(5..).map(|(_,v)| v).at(Bounds(..)).at(1).at("a").replace(11);
 //!
 //! assert!(map.at(&8).at("a").get_clone() == Some(11));
+//!
+//! // And now enter batches (and another level of callbacks, 
+//! // but still unlike a typical pyramidal callback hell):
+//! map.range_mut(..=5).map(|(_,v)| v).at(Bounds(..)).batch_ct()
+//!     .add(|x, _| x.at(0).at("c").replace(12))
+//!     .add(|x, _| x.at(0).at("a").replace(13))
+//!     .add(|x, _| x.at(1).at("b").replace(14))
+//!     .run();
+//!
+//! assert!(map.at(&1).at("c").get_clone() == Some(12));
+//! assert!(map.at(&1).at("a").get_clone() == Some(13));
+//! assert!(map.at(&5).at("b").get_clone() == Some(14));
 //! ```
 
 pub use multiref::Slice;
