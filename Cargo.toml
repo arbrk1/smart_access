@@ -23,8 +23,8 @@ batch_ct = []
 batch = ["batch_ct", "batch_rt"]
 detach = []
 iter_mut = ["multiref", "std"]
-traversal = []
-default = ["collections", "batch", "detach", "iter_mut", "traversal"]
+traversal = []  ## WIP (do not use!)
+default = ["collections", "batch", "detach", "iter_mut"]
 
 [[test]]
 name = "no_std"

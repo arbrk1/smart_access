@@ -1,3 +1,5 @@
+/// General traversals. __WIP: absolutely not ready for use; anything may change!!!__
+
 use crate::AT;
 
 pub trait EachOf<Index> where

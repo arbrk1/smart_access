@@ -73,6 +73,37 @@
 //! map.iter_mut().map(|kv| kv.1).at(Bounds(..3)).access( |xs| { /* do something */ } );
 //! # assert!(result == None);
 //! ```
+//!
+//! But the main usecase is to allow indices denoting complex places. Suppose 
+//! that you want to describe a place 
+//! &#8220;every third element of an array&#8221;.
+//!
+//! It can be done with the following code
+//!
+//! ```
+//! # use smart_access::{ At, Cps, iter_mut::{ Bounds, Slice } };
+//! struct EveryThird;
+//!
+//! impl<T> At<EveryThird> for [T] {
+//!     type View = Slice<T>;  // there must be Slice<T> instead of [T]
+//!
+//!     fn access_at<R, F>(&mut self, _: EveryThird, f: F) -> Option<R> where
+//!         F: FnOnce(&mut Slice<T>) -> R
+//!     {
+//!         self.chunks_mut(3)
+//!             .map(|x| unsafe { x.get_unchecked_mut(0) })
+//!             .access_at(Bounds(..), f)  // the key part
+//!     }
+//! }
+//!
+//! // And now the following is possible:
+//! let mut foo = vec![ vec![1, 2, 3, 4], vec![5, 6, 7] ];
+//!
+//! foo.at(0).at(()).at(EveryThird).access(|slice| {
+//!     for x in slice.as_mut() { **x = 8; }
+//! });
+//! assert!(foo == vec![vec![8, 2, 3, 8], vec![5, 6, 7]]);
+//! ```
 
 pub use multiref::Slice;
 mod multiref_impls;
@@ -102,23 +133,3 @@ impl<'a, I, B, V> At<Bounds<B>> for I where
         })
     }
 }
-
-/* WIP
-/// Can be used to access an iterator for some collection types.
-///
-/// Currently implemented for:
-///
-/// * `<Some>Map<K,V>`: gives a `&mut V` iterator
-pub struct IterBounds<B>(pub B); 
-
-#[cfg(feature="collections")]
-impl<K,V,B> At<IterBounds<B>> for alloc::collections::HashMap<K,V> {
-    type View = Slice<V>;
-    
-    fn access_at<R, F>(&mut self, i: IterBounds<B>, f: F) -> Option<R> where
-        F: FnOnce(&mut Slice<V>) -> R
-    {
-        todo!()
-    }
-}*/
-
