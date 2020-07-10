@@ -61,7 +61,7 @@
 //! ## Usage
 //!
 //! Any `Iterator` (exactly `Iterator`, __not__ `IntoIterator`) 
-//! has `At<Bounds<R>>` implemented for every type R of `usize`-indexed ranges.
+//! has `At<Bounds<R>>` implemented for every type `R` of `usize`-indexed ranges.
 //!
 //! For example, to access the three elements of a `BTreeMap` with 
 //! the smallest keys, you can write

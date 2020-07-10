@@ -58,7 +58,7 @@ smart_access = { version = "0.6", default-features = false, features = ["batch_c
 
 ## Versions
 
-* `0.6.2`: WIP
+* `0.6.2`: An accessor to the `Vec`-owned slice + some doc improvements.
 * `0.6.1`: Fixed iterator accessors panicking on too large ranges.
 * `0.6.0`: Accessors for iterators + `get_clone` method on the `Cps` trait.
 * `0.5.4`: Accessors for stdlib sets + doc improvements.
