@@ -17,7 +17,11 @@ use detach::{ DetachedRoot };
 pub use detach::{ Attach, DetachedPath };
 
 #[cfg(feature="traversal")]
-use crate::traversal::{ Each, EachFrom };
+pub mod traversal;
+
+#[cfg(feature="traversal")]
+use traversal::{ Each, EachOf };
+
 
 
 /// A smart access protocol.
@@ -331,7 +335,7 @@ impl<CPS, List> AT<CPS, List> {
     #[cfg(feature="traversal")]
     pub fn from<Index, View: ?Sized>(self, i: Index) -> AT<CPS, (List, Index)> where
         AT<CPS, List>: Each<View=View>,
-        View: EachFrom<Index>,
+        View: EachOf<Index>,
         Index: Clone
     {
         AT { cps: self.cps, list: (self.list, i) } 
