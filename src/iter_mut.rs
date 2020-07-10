@@ -56,12 +56,27 @@
 //! assert!(map.at(&1).at("a").get_clone() == Some(13));
 //! assert!(map.at(&5).at("b").get_clone() == Some(14));
 //! ```
+//!
+//! ## Usage
+//!
+//! Any `Iterator` (exactly `Iterator`, __not__ `IntoIterator`) 
+//! has `At<Bounds<R>>` implemented for every type R of `usize`-indexed ranges.
+//!
+//! For example, to access the three elements of a `BTreeMap` with 
+//! the smallest keys, you can write
+//! ```
+//! # use std::collections::BTreeMap;
+//! # use smart_access::{ Cps, iter_mut::Bounds };
+//! # let mut map = BTreeMap::<i32,i32>::new();
+//! # let result =
+//! map.iter_mut().map(|kv| kv.1).at(Bounds(..3)).access( |xs| { /* do something */ } );
+//! # assert!(result == None);
+//! ```
 
 pub use multiref::Slice;
 mod multiref_impls;
 
 use crate::At;
-use core::slice::SliceIndex;
 
 /// A newtype-wrapper around slice bounds.
 #[repr(transparent)]#[derive(Debug,Copy,Clone)]
@@ -69,7 +84,7 @@ pub struct Bounds<B>(pub B);
 
 impl<'a, I, B, V> At<Bounds<B>> for I where
     I: Iterator<Item=&'a mut V>,
-    B: SliceIndex<[&'a mut V], Output=[&'a mut V]>,
+    [&'a mut V]: At<B, View = [&'a mut V]>,
     V: 'a + ?Sized,
 {
     type View = Slice<V>;
@@ -79,7 +94,12 @@ impl<'a, I, B, V> At<Bounds<B>> for I where
     {
         let mut ref_vec = self.collect::<Vec<_>>();
 
-        Some(f(Slice::new_mut(&mut ref_vec[i.0])))
+        (&mut ref_vec[..]).access_at(i.0, |subslice| {
+            f(Slice::new_mut(subslice))
+        })
     }
 }
+
+// WIP: a marker to get an iterator from some concrete collection types
+// pub struct Iter; 
 
