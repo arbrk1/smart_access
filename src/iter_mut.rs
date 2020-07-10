@@ -2,7 +2,8 @@
 //! __Requires `iter_mut`.__
 //!
 //! Unfortunately, this module can't be used without `std`: 
-//! our `Cps` values are _affine_ traversals, thus they must have 
+//! our [`Cps`](../trait.Cps.html) values are _affine_ traversals, 
+//! thus they must have 
 //! all the iteration results simultaneously, which in turn requires
 //! allocating memory at runtime.
 //!
@@ -93,6 +94,8 @@ impl<'a, I, B, V> At<Bounds<B>> for I where
         F: FnOnce(&mut Slice<V>) -> R
     {
         let mut ref_vec = self.collect::<Vec<_>>();
+        // TODO: a more efficient implementation: 
+        // O( len(range) ) instead of O( len(collection) )
 
         (&mut ref_vec[..]).access_at(i.0, |subslice| {
             f(Slice::new_mut(subslice))
@@ -100,6 +103,22 @@ impl<'a, I, B, V> At<Bounds<B>> for I where
     }
 }
 
-// WIP: a marker to get an iterator from some concrete collection types
-// pub struct Iter; 
+/* WIP
+/// Can be used to access an iterator for some collection types.
+///
+/// Currently implemented for:
+///
+/// * `<Some>Map<K,V>`: gives a `&mut V` iterator
+pub struct IterBounds<B>(pub B); 
+
+#[cfg(feature="collections")]
+impl<K,V,B> At<IterBounds<B>> for alloc::collections::HashMap<K,V> {
+    type View = Slice<V>;
+    
+    fn access_at<R, F>(&mut self, i: IterBounds<B>, f: F) -> Option<R> where
+        F: FnOnce(&mut Slice<V>) -> R
+    {
+        todo!()
+    }
+}*/
 

@@ -1,6 +1,18 @@
 use crate::at::At;
 use std::ops;
 
+impl<T> At<()> for Vec<T> 
+{
+    type View = [T];
+
+    fn access_at<R, F>(&mut self, _: (), f: F) -> Option<R> where 
+        F: FnOnce(&mut Self::View) -> R 
+    {
+        Some(f(self as &mut [T]))
+    }
+}
+
+
 impl<T> At<usize> for Vec<T> 
 {
     type View = T;

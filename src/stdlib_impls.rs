@@ -2,9 +2,10 @@
 //! __Requires the `collections` feature.__
 //!
 //! The following traits are implemented:
+//! * `At<(), View=[T]> for Vec<T>`: the slice owned by the vector
 //! * `At<usize, View=T> for Vec<T>`: simple indexing
 //! * `At<range, View=Vec<T>> for Vec<T>`: subvector (its size can be changed); 
-//!   __Warning:__ access is O(n); wrap vector in `&mut[..]` to get O(1) access
+//!   __Warning:__ access is O(n); consider passing to slices to get O(1) access
 //! * `At<&Q, View=V> for <Some>Map<K,V>`: access the value if it is present 
 //! * `At<(K,V), View=V> for <Some>Map<K,V>`: ensure that the value is 
 //!   present (using the provided default) then access it
@@ -36,6 +37,11 @@
 //!
 //! assert!(foo.at(1..=2).replace(vec![5,6,7]) == Some(vec![2,3]));
 //! assert!(foo == vec![4,5,6,7]);
+//!
+//! // faster but less flexible
+//! //          VVVVVV
+//! assert!(foo.at(()).at(1..=2).at(0).replace(8) == Some(5));
+//! assert!(foo == vec![4,8,6,7]);
 //! ```
 //!
 //!

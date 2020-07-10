@@ -1,6 +1,6 @@
 [package]
 name = "smart_access"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["arbrk1 <arbrk1@gmail.com>"]
 edition = "2018"
 description = 'A minimalistic "lazy bidirectional pointer" framework.'
@@ -23,7 +23,8 @@ batch_ct = []
 batch = ["batch_ct", "batch_rt"]
 detach = []
 iter_mut = ["multiref", "std"]
-default = ["collections", "batch", "detach", "iter_mut"]
+traversal = []
+default = ["collections", "batch", "detach", "iter_mut", "traversal"]
 
 [[test]]
 name = "no_std"

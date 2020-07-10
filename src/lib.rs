@@ -699,5 +699,10 @@ pub use at::{ Attach, detached_at, DetachedPath };
 #[cfg(feature="iter_mut")]
 pub mod iter_mut;
 
+#[cfg(feature="traversal")]
+pub mod traversal;
+
+#[cfg(feature="traversal")]
+pub use traversal::{ EachFrom, Each };
 
 mod macros;
