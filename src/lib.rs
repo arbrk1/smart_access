@@ -190,14 +190,14 @@
 //!
 //! ```
 //! # use smart_access::Cps;
-//! # let mut map = std::collections::HashMap::<String,String>::new();
+//! # let mut map = hashbrown::HashMap::<String,String>::new();
 //! map.at( ("foo".to_string(), "bar".to_string()) ).touch();
 //! ```
 //!
 //! instead of
 //!
 //! ```
-//! # let mut map = std::collections::HashMap::<String,String>::new();
+//! # let mut map = hashbrown::HashMap::<String,String>::new();
 //! map.entry("foo".to_string()).or_insert("bar".to_string());
 //! ```
 //!
@@ -671,13 +671,16 @@
 //!
 //! All features are enabled by default.
 
-#![cfg_attr(not(feature="std"), no_std)]
+#![no_std]
+
+#[cfg(feature="alloc")]
+extern crate alloc;
 
 mod at;
 pub mod core_impls;
 
 #[cfg(feature="collections")]
-pub mod stdlib_impls;
+pub mod collections;
 
 pub use at::{At, AT, Cps};
 

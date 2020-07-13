@@ -1,5 +1,5 @@
 
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use smart_access::{At, Cps};
 
 struct Ensure<K,V> { key: K, value: V }

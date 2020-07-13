@@ -1,9 +1,10 @@
-use std::borrow::Borrow;
-use std::collections::{HashMap, BTreeMap};
-use std::hash::Hash;
+use core::borrow::Borrow;
+use alloc::collections::BTreeMap;
+use core::hash::Hash;
 use crate::At;
 
-impl<Q,K,V> At<&Q> for HashMap<K,V> where
+#[cfg(feature="hashbrown")]
+impl<Q,K,V> At<&Q> for hashbrown::HashMap<K,V> where
     K: Borrow<Q> + Eq + Hash,
     Q: ?Sized + Eq + Hash
 {
@@ -16,34 +17,8 @@ impl<Q,K,V> At<&Q> for HashMap<K,V> where
     }
 }
 
-
-/* EDIT-ACCESSOR: WIP
-impl<Q,K,V> At<Option<&Q>> for HashMap<K,V> where
-    K: Borrow<Q> + Eq + Hash,
-    Q: ?Sized + Eq + Hash
-{
-    type View = Option<V>;
-
-    fn access_at<R,F>(&mut self, maybe_i: Option<&Q>, f: F) -> Option<R> where
-        F: FnOnce(&mut Option<V>) -> R
-    {
-        maybe_i.map(|i| {
-            self.remove_entry(i).map(|(k,v)| {
-                let mut cell = Some(v);
-
-                let result = f(&mut cell);
-
-                if let Some(new_v) = cell {
-                    self.insert(k, new_v);
-                }
-
-                result
-            })
-        }).flatten()
-    }
-}*/
-
-impl<K,V> At<(K,V)> for HashMap<K,V> where
+#[cfg(feature="hashbrown")]
+impl<K,V> At<(K,V)> for hashbrown::HashMap<K,V> where
     K: Eq + Hash,
 {
     type View = V;
@@ -55,7 +30,8 @@ impl<K,V> At<(K,V)> for HashMap<K,V> where
     }
 }
 
-impl<K,V,M> At<(K,V,M)> for HashMap<K,V> where
+#[cfg(feature="hashbrown")]
+impl<K,V,M> At<(K,V,M)> for hashbrown::HashMap<K,V> where
     K: Eq + Hash,
     M: FnOnce(&mut V)
 {
@@ -67,6 +43,56 @@ impl<K,V,M> At<(K,V,M)> for HashMap<K,V> where
         Some(f(self.entry(kvm.0).and_modify(kvm.2).or_insert(kvm.1)))
     }
 }
+
+
+#[cfg(feature="std_hashmap")]
+extern crate std;
+
+
+#[cfg(feature="std_hashmap")]
+impl<Q,K,V> At<&Q> for std::collections::HashMap<K,V> where
+    K: Borrow<Q> + Eq + Hash,
+    Q: ?Sized + Eq + Hash
+{
+    type View = V;
+
+    fn access_at<R,F>(&mut self, i: &Q, f: F) -> Option<R> where
+        F: FnOnce(&mut V) -> R
+    {
+        self.get_mut(i).map(|v| f(v))
+    }
+}
+
+#[cfg(feature="std_hashmap")]
+impl<K,V> At<(K,V)> for std::collections::HashMap<K,V> where
+    K: Eq + Hash,
+{
+    type View = V;
+
+    fn access_at<R,F>(&mut self, kv: (K,V), f: F) -> Option<R> where
+        F: FnOnce(&mut V) -> R
+    {
+        Some(f(self.entry(kv.0).or_insert(kv.1)))
+    }
+}
+
+#[cfg(feature="std_hashmap")]
+impl<K,V,M> At<(K,V,M)> for std::collections::HashMap<K,V> where
+    K: Eq + Hash,
+    M: FnOnce(&mut V)
+{
+    type View = V;
+
+    fn access_at<R,F>(&mut self, kvm: (K,V,M), f: F) -> Option<R> where
+        F: FnOnce(&mut V) -> R
+    {
+        Some(f(self.entry(kvm.0).and_modify(kvm.2).or_insert(kvm.1)))
+    }
+}
+
+
+
+
 
 
 impl<Q,K,V> At<&Q> for BTreeMap<K,V> where

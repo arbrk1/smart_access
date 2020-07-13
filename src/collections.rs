@@ -55,7 +55,7 @@
 //!
 //! ```
 //! # use smart_access::{ Cps };
-//! # use std::collections::HashMap;
+//! # use hashbrown::HashMap;
 //! let mut hm = HashMap::<usize, usize>::new();
 //!
 //! hm.at( (42, 1) ).touch();
@@ -91,7 +91,7 @@
 //! Compare:
 //!
 //! ```
-//! # use std::collections::{ HashMap, HashSet };
+//! # use hashbrown::{ HashMap, HashSet };
 //! # use smart_access::Cps;
 //! let mut map = HashMap::<String,()>::new();
 //! let mut set = HashSet::<String>::new();
@@ -108,7 +108,7 @@
 //! Also a one-tuple accessor is available, allowing to chain insertions:
 //! 
 //! ```
-//! # use std::collections::{ HashSet };
+//! # use hashbrown::{ HashSet };
 //! # use smart_access::Cps;
 //! let mut set = HashSet::new();
 //! 
@@ -122,6 +122,9 @@ mod set;
 
 #[test]
 fn test_vec() {
+    extern crate std;
+    use std::vec;
+    use std::prelude::v1::*;
     use crate::Cps;
     
     let mut foo = vec![1,2,3,4,5];
@@ -155,8 +158,10 @@ fn test_vec() {
 }
 
 
-#[test]
+#[test]#[cfg(feature="std_hashmap")]
 fn test_hash_map() {
+    extern crate std;
+    use std::prelude::v1::*;
     use std::collections::HashMap;
     use crate::Cps;
 
@@ -180,6 +185,8 @@ fn test_hash_map() {
 
 #[test]
 fn test_btree_map() {
+    extern crate std;
+    use std::prelude::v1::*;
     use std::collections::BTreeMap;
     use crate::Cps;
 

@@ -27,9 +27,10 @@
 
 mod slice;
 
-#[test]
+#[test]#[cfg(feature="alloc")]
 fn test_slice() {
     use crate::Cps;
+    use alloc::vec;
 
     let mut foo = vec![1,2,3,4,5];
 

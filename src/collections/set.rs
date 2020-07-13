@@ -1,10 +1,11 @@
-use std::borrow::Borrow;
-use std::collections::{HashSet, BTreeSet};
-use std::hash::Hash;
+use core::borrow::Borrow;
+use alloc::collections::BTreeSet;
+use core::hash::Hash;
 use crate::At;
 
 
-impl<T> At<(T,)> for HashSet<T> where
+#[cfg(feature="hashbrown")]
+impl<T> At<(T,)> for hashbrown::HashSet<T> where
     T: Eq + Hash,
 {
     type View = Self;
@@ -19,7 +20,8 @@ impl<T> At<(T,)> for HashSet<T> where
 }
 
 
-impl<T> At<(T,())> for HashSet<T> where
+#[cfg(feature="hashbrown")]
+impl<T> At<(T,())> for hashbrown::HashSet<T> where
     T: Eq + Hash,
 {
     type View = T;
@@ -40,7 +42,8 @@ impl<T> At<(T,())> for HashSet<T> where
 }
 
 
-impl<Q,T> At<&Q> for HashSet<T> where
+#[cfg(feature="hashbrown")]
+impl<Q,T> At<&Q> for hashbrown::HashSet<T> where
     T: Borrow<Q> + Eq + Hash,
     Q: ?Sized + Eq + Hash
 {
@@ -60,31 +63,71 @@ impl<Q,T> At<&Q> for HashSet<T> where
 }
 
 
-/* EDIT-ACCESSOR: WIP
-impl<Q,T> At<Option<&Q>> for HashSet<T> where
+#[cfg(feature="std_hashmap")]
+extern crate std;
+
+
+#[cfg(feature="std_hashmap")]
+impl<T> At<(T,)> for std::collections::HashSet<T> where
+    T: Eq + Hash,
+{
+    type View = Self;
+
+    fn access_at<R,F>(&mut self, item: (T,), f: F) -> Option<R> where
+        F: FnOnce(&mut Self) -> R
+    {
+        self.insert(item.0);
+
+        Some(f(self))
+    }
+}
+
+
+#[cfg(feature="std_hashmap")]
+impl<T> At<(T,())> for std::collections::HashSet<T> where
+    T: Eq + Hash,
+{
+    type View = T;
+
+    fn access_at<R,F>(&mut self, mut item: (T,()), f: F) -> Option<R> where
+        F: FnOnce(&mut T) -> R
+    {
+        if let Some(v) = self.take(&item.0) {
+            item.0 = v;
+        }
+
+        let result = f(&mut item.0);
+        
+        self.insert(item.0);
+
+        Some(result)
+    }
+}
+
+
+#[cfg(feature="std_hashmap")]
+impl<Q,T> At<&Q> for std::collections::HashSet<T> where
     T: Borrow<Q> + Eq + Hash,
     Q: ?Sized + Eq + Hash
 {
-    type View = Option<T>;
+    type View = T;
 
-    fn access_at<R,F>(&mut self, maybe_i: Option<&Q>, f: F) -> Option<R> where
-        F: FnOnce(&mut Option<T>) -> R
+    fn access_at<R,F>(&mut self, i: &Q, f: F) -> Option<R> where
+        F: FnOnce(&mut T) -> R
     {
-        maybe_i.map(|i| {
-            self.take(i).map(|v| {
-                let mut cell = Some(v);
+        self.take(i).map(|mut v| {
+            let result = f(&mut v);
 
-                let result = f(&mut cell);
+            self.insert(v);
 
-                if let Some(new_v) = cell {
-                    self.insert(new_v);
-                }
-
-                result
-            })
-        }).flatten()
+            result
+        })
     }
-}*/
+}
+
+
+
+
 
 
 impl<T> At<(T,)> for BTreeSet<T> where

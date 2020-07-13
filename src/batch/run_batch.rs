@@ -1,6 +1,9 @@
 #[cfg(feature="batch_rt")]
 use super::{ FnBoxRt };
 
+#[cfg(feature="alloc")]
+use alloc::vec::Vec;
+
 // trait used mainly for compile-time constructed call chains
 //
 // Is private to the "crate::batch" module.

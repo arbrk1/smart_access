@@ -1,8 +1,8 @@
-/// General traversals. __WIP: absolutely not ready for use; anything may change!!!__
+/// General traversals.
 
 use crate::AT;
 
-pub trait EachOf<Index> where
+pub trait Of<Index> where
     Index: Clone
 {
     type View: ?Sized;
@@ -19,7 +19,7 @@ pub trait Each: Sized {
         F: FnMut(&mut Self::View);
 
     fn of<Index>(self, i: Index) -> AT<Self, ((), Index)> where
-        Self::View: EachOf<Index>,
+        Self::View: Of<Index>,
         Index: Clone
     {
         AT { cps: self, list: ((), i) } 
@@ -28,7 +28,7 @@ pub trait Each: Sized {
 
 
 impl<CPS: Each, Path> Each for AT<CPS, Path> where
-    Path: EachView<CPS::View>
+    Path: OfView<CPS::View>
 {
     type View = Path::View;
     
@@ -40,7 +40,7 @@ impl<CPS: Each, Path> Each for AT<CPS, Path> where
 }
 
 
-pub trait EachView<View: ?Sized>: Sized {
+pub trait OfView<View: ?Sized>: Sized {
     type View: ?Sized;
 
     fn give_access<CPS, F>(self, cps: CPS, f: F) where
@@ -49,7 +49,7 @@ pub trait EachView<View: ?Sized>: Sized {
 }
 
 
-impl<View: ?Sized> EachView<View> for () {
+impl<View: ?Sized> OfView<View> for () {
     type View = View;
     
     fn give_access<CPS, F>(self, cps: CPS, f: F) where
@@ -60,12 +60,12 @@ impl<View: ?Sized> EachView<View> for () {
     }
 }
 
-impl<View: ?Sized, Prev, Index> EachView<View> for (Prev, Index) where
-    Prev: EachView<View>,
-    Prev::View: EachOf<Index>,
+impl<View: ?Sized, Prev, Index> OfView<View> for (Prev, Index) where
+    Prev: OfView<View>,
+    Prev::View: Of<Index>,
     Index: Clone
 {
-    type View = <Prev::View as EachOf<Index>>::View;
+    type View = <Prev::View as Of<Index>>::View;
     
     fn give_access<CPS, F>(self, cps: CPS, mut f: F) where
         CPS: Each<View=View>,

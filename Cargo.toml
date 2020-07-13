@@ -1,6 +1,6 @@
 [package]
 name = "smart_access"
-version = "0.6.2"
+version = "0.7.0"
 authors = ["arbrk1 <arbrk1@gmail.com>"]
 edition = "2018"
 description = 'A minimalistic "lazy bidirectional pointer" framework.'
@@ -14,17 +14,19 @@ categories = ["data-structures", "rust-patterns", "no-std"]
 
 [dependencies]
 multiref = { version = "0.1", optional = true }
+hashbrown = { version = "0.8", optional = true }
 
 [features]
-std = []
-collections = ["std"]
-batch_rt = ["std"]
+alloc = []
+collections = ["alloc"]
+std_hashmap = []
+batch_rt = ["alloc"]
 batch_ct = []
 batch = ["batch_ct", "batch_rt"]
 detach = []
-iter_mut = ["multiref", "std"]
-traversal = []  ## WIP (do not use!)
-default = ["collections", "batch", "detach", "iter_mut"]
+iter_mut = ["multiref", "alloc"]
+traversal = []
+default = ["collections", "hashbrown", "batch", "detach", "iter_mut"]
 
 [[test]]
 name = "no_std"

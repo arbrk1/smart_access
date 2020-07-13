@@ -110,6 +110,10 @@ mod multiref_impls;
 
 use crate::At;
 
+
+use alloc::vec::Vec;
+
+
 /// A newtype-wrapper around slice bounds.
 #[repr(transparent)]#[derive(Debug,Copy,Clone)]
 pub struct Bounds<B>(pub B);
