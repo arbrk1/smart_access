@@ -26,7 +26,7 @@ batch = ["batch_ct", "batch_rt"]
 detach = []
 iter_mut = ["multiref", "alloc"]
 traversal = []
-default = ["collections", "hashbrown", "batch", "detach", "iter_mut"]
+default = ["collections", "hashbrown", "batch", "detach", "iter_mut", "traversal"]
 
 [[test]]
 name = "no_std"

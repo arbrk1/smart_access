@@ -1,14 +1,11 @@
 //! Support for arbitrary mutating iterators.
 //! __Requires `iter_mut`.__
 //!
-//! Unfortunately, this module can't be used without `std`: 
+//! This module requires the `alloc` feature: 
 //! our [`Cps`](../trait.Cps.html) values are _affine_ traversals, 
 //! thus they must have 
 //! all the iteration results simultaneously, which in turn requires
 //! allocating memory at runtime.
-//!
-//! _It is planned to make the `smart_access` crate dependent only on 
-//! the `alloc` crate._
 //!
 //! This module depends on the [`multiref`](https://crates.io/crates/multiref/) 
 //! crate. The [`Slice`](struct.Slice.html) type is re-exported 

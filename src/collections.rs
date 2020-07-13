@@ -1,4 +1,4 @@
-//! Implementation of [`At`](../trait.At.html) for stdlib collections. 
+//! Implementation of [`At`](../trait.At.html) for some collections. 
 //! __Requires the `collections` feature.__
 //!
 //! The following traits are implemented:

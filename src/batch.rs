@@ -3,10 +3,10 @@ use run_batch::RunBatch;
 
 use crate::at::Cps;
 
-#[cfg(feature="alloc")]
+#[cfg(feature="batch_rt")]
 use alloc::vec::Vec;
 
-#[cfg(feature="alloc")]
+#[cfg(feature="batch_rt")]
 use alloc::boxed::Box;
 
 

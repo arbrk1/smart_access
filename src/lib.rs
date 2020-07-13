@@ -571,6 +571,26 @@
 //!
 //! ## Version migration guide
 //!
+//! ### From 0.6 to 0.7
+//!
+//! #### Difference #1
+//!
+//! Now the crate is fully independent of `std`. There is one thing however:
+//! `HashMap` and `HashSet` are not yet in the `alloc::collections`.
+//!
+//! There are two options:
+//!
+//! * use the optional `hashbrown` dependency
+//! * link to `std` by enabling the `std_hashmap` feature
+//!
+//!
+//! #### Difference #2
+//!
+//! The first iteration of a general traversal (not affine, i.e. supporting 
+//! more than one location) API is available. Obviously, it's fully 
+//! backward-compatible.
+//!
+//!
 //! ### From 0.5 to 0.6
 //!
 //! #### Difference #1
@@ -661,15 +681,23 @@
 //!
 //! Currently there are following features:
 //!
-//! * `std`: Links to std. __Deprecated. Will be removed in 0.7.__
-//! * `collections`: Provides [accessors for stdlib collections](./stdlib_impls/).
-//! * `batch_rt`: Provides runtime [batching](struct.CpsBatch.html).
-//! * `batch_ct`: Provides compile-time [batching](struct.CpsBatch.html). __Compatible with `no_std`.__
+//! * `alloc`: Links to `alloc`.
+//! * `collections`: Provides [accessors for some collections](./collections/). 
+//!   __Implies `alloc`.__
+//! * `hashbrown`: Accessors for `HashMap` and `HashSet` from the 
+//!   [`hashbrown`](https://crates.io/crates/hashbrown) crate.
+//!   __Pulls the `hashbrown` crate, implies `alloc`.__
+//! * `std_hashmap`: Accessors for `HashMap` and `HashSet` from `std`. __Warning: links to `std`.__
+//! * `batch_rt`: Provides runtime [batching](struct.CpsBatch.html). 
+//!   __Implies `alloc`.__
+//! * `batch_ct`: Provides compile-time [batching](struct.CpsBatch.html).
 //! * `batch`: An alias for `batch_rt` and `batch_ct` enabled simultaneously.
-//! * `detach`: Makes [`AT`](struct.AT.html)-paths [detachable](struct.AT.html#method.detach). __Compatible with `no_std`.__
-//! * `iter_mut`: [Accessors for iterators](./iter_mut/). __Pulls the [`multiref`](https://crates.io/crates/multiref) crate.__
+//! * `detach`: Makes [`AT`](struct.AT.html)-paths [detachable](struct.AT.html#method.detach).
+//! * `iter_mut`: [Accessors for iterators](./iter_mut/). 
+//!   __Pulls the [`multiref`](https://crates.io/crates/multiref) crate, implies `alloc`.__
+//! * `traversal`: Bidirectional iterators in continuation passing style.
 //!
-//! All features are enabled by default.
+//! All features except `std_hashmap` are enabled by default.
 
 #![no_std]
 

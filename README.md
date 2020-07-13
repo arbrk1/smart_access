@@ -26,7 +26,7 @@ For code examples see [the docs](https://docs.rs/smart_access/).
 Simply include 
 
 ```
-smart_access = "0.6"
+smart_access = "0.7"
 ```
 
 in your `Cargo.toml`.
@@ -38,7 +38,7 @@ The library, although being very small, includes some pluggable components.
 For a bare-bones version use
 
 ```
-smart_access = { version = "0.6", default-features = false }
+smart_access = { version = "0.7", default-features = false }
 ```
 
 But usually you'll want something more convenient.
@@ -46,19 +46,19 @@ But usually you'll want something more convenient.
 #### Accessors for Vec, HashMap and BTreeMap
 
 ```
-smart_access = { version = "0.6", default-features = false, features = ["collections"] }
+smart_access = { version = "0.7", default-features = false, features = ["collections", "hashbrown"] }
 ```
 
-#### A maximal `no_std` variant
+#### A maximal `no_std` and no-`alloc` variant
 
 ```
-smart_access = { version = "0.6", default-features = false, features = ["batch_ct", "detach"] }
+smart_access = { version = "0.7", default-features = false, features = ["batch_ct", "detach", "traversal"] }
 ```
 
 
 ## Versions
 
-* `0.7.0`: WIP
+* `0.7.0`: Now fully independent of `std`.
 * `0.6.2`: An accessor to the `Vec`-owned slice + some doc improvements.
 * `0.6.1`: Fixed iterator accessors panicking on too large ranges.
 * `0.6.0`: Accessors for iterators + `get_clone` method on the `Cps` trait.
